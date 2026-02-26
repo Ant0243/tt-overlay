@@ -109,7 +109,11 @@
 </div>
 
 <script>
-  const socket = new WebSocket("ws://localhost:8787");
+  new WebSocket(
+          location.protocol === "https:"
+                  ? "wss://" + location.host
+                  : "ws://" + location.host
+  );
   const statusEl = document.getElementById("status");
 
   function send(type, extra = {}) {
