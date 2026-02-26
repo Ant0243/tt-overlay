@@ -192,11 +192,22 @@
 </div>
 
 <script>
-  new WebSocket(
+  const socket = new WebSocket(
           location.protocol === "https:"
                   ? "wss://" + location.host
                   : "ws://" + location.host
   );
+  socket.onopen = () => {
+    console.log("Overlay connecté ✅");
+  };
+
+  socket.onerror = () => {
+    console.log("Overlay erreur ❌");
+  };
+
+  socket.onclose = () => {
+    console.log("Overlay connexion perdue ⚠️");
+  };
   const el = (id) => document.getElementById(id);
 
   let stBestOf = 5; // défaut BO5
