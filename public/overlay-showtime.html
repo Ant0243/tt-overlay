@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>TT SHOWTIME</title>
+
+  <style>
+    html,body{
+      margin:0;
+      height:100%;
+      width:100%;
+      overflow:hidden;
+      background: #0007f8;
+      font-family:-apple-system,system-ui,Segoe UI,Roboto;
+    }
+
+    /* BACKGROUND ANIMÉ */
+    .bg{
+      position:fixed;
+      inset:0;
+      background:radial-gradient(circle at center, rgba(255,255,255,.05), transparent),
+      radial-gradient(circle at 30% 70%, rgba(255,0,0,.15), transparent),
+      radial-gradient(circle at 70% 30%, rgba(0,0,255,.15), transparent);
+      animation:bgMove 12s linear infinite alternate;
+      z-index:-2;
+    }
+
+    @keyframes bgMove{
+      from{filter:hue-rotate(0deg);}
+      to{filter:hue-rotate(360deg);}
+    }
+
+    /* FLASH INTRO */
+    .flash{
+      position:fixed;
+      inset:0;
+      background:white;
+      opacity:0;
+      pointer-events:none;
+    }
+
+    .flash.play{
+      animation:flash 0.6s ease;
+    }
+
+    @keyframes flash{
+      0%{opacity:1;}
+      100%{opacity:0;}
+    }
+
+    /* MAIN WRAP */
+    .wrap{
+      position:fixed;
+      inset:0;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      opacity:0;
+      transition:1s ease;
+    }
+
+    .wrap.show{
+      opacity:1;
+    }
+
+    /* VICTORY TEXT */
+    .victory{
+      font-size:120px;
+      font-weight:900;
+      letter-spacing:8px;
+      text-transform:uppercase;
+      animation:zoomIn 1s ease forwards;
+    }
+
+    @keyframes zoomIn{
+      from{transform:scale(0.4);opacity:0;}
+      to{transform:scale(1);opacity:1;}
+    }
+
+    /* WINNER NAME */
+    .winner{
+      font-size:90px;
+      font-weight:900;
+      margin-top:40px;
+      animation:glow 2s ease infinite alternate;
+    }
+
+    @keyframes glow{
+      from{ text-shadow:0 0 20px rgba(255,255,255,.2);}
+      to{ text-shadow:0 0 60px rgba(255,255,255,.9);}
+    }
+
+    /* SCORE */
+    .score{
+      font-size:60px;
+      font-weight:800;
+      margin-top:20px;
+      animation:popUp .9s ease forwards;
+    }
+
+    @keyframes popUp{
+      from{transform:translateY(50px);opacity:0;}
+      to{transform:translateY(0);opacity:1;}
+    }
+
+    /* SETS GRID */
+    .sets{
+      display:flex;
+      gap:30px;
+      margin-top:60px;
+    }
+
+    .set{
+      padding:20px 30px;
+      border-radius:12px;
+      background:rgba(255,255,255,.08);
+      font-size:28px;
+      font-weight:700;
+      animation:fadeInUp 1s ease forwards;
+    }
+
+    @keyframes fadeInUp{
+      from{opacity:0;transform:translateY(40px);}
+      to{opacity:1;transform:translateY(0);}
+    }
+
+    /* CONFETTI */
+    canvas{
+      position:fixed;
+      inset:0;
+      z-index:-1;
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg"></div>
+<div class="flash" id="flash"></div>
+<canvas id="confetti"></canvas>
+
+<div class="wrap" id="wrap">
+  <div class="victory">VICTOIRE</div>
+  <div class="winner" id="winnerName"></div>
+  <div class="score" id="finalScore"></div>
+  <div class="sets" id="setList"></div>
+</div>
+
+<script>
+  const ws = new WebSocket("ws://localhost:8787");
+  const el = id=>document.getElementById(id);
+
+  /* CONFETTI SIMPLE */
+  const canvas = document.getElementById("confetti");
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  let confetti = [];
+
+  function createConfetti(){
+    for(let i=0;i<200;i++){
+      confetti.push({
+        x:Math.random()*canvas.width,
+        y:Math.random()*canvas.height,
+        r:Math.random()*6,
+        d:Math.random()*10+5
+      });
+    }
+  }
+
+  function drawConfetti(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="white";
+    confetti.forEach(c=>{
+      ctx.beginPath();
+      ctx.arc(c.x,c.y,c.r,0,Math.PI*2);
+      ctx.fill();
+      c.y+=c.d;
+      if(c.y>canvas.height) c.y=0;
+    });
+    requestAnimationFrame(drawConfetti);
+  }
+
+  function teamName(st,team){
+    return team==="A"? st.A1 : st.B1;
+  }
+
+  ws.onmessage=(e)=>{
+    const st=JSON.parse(e.data);
+
+    if(!st.finished){
+      el("wrap").classList.remove("show");
+      return;
+    }
+
+    el("flash").classList.add("play");
+    el("wrap").classList.add("show");
+
+    const winner = st.setsA>st.setsB ? "A":"B";
+
+    el("winnerName").textContent=teamName(st,winner);
+    el("finalScore").textContent=`${st.setsA} – ${st.setsB}`;
+
+    const sets = st.pointHistory
+            .filter(p=>p.type==="SET_END")
+            .map(p=>p.score);
+
+    const container=el("setList");
+    container.innerHTML="";
+    sets.forEach((s,i)=>{
+      const d=document.createElement("div");
+      d.className="set";
+      d.textContent=`SET ${i+1}: ${s.a} – ${s.b}`;
+      container.appendChild(d);
+    });
+
+    createConfetti();
+    drawConfetti();
+  };
+</script>
+
+</body>
+</html>

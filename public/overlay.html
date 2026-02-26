@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>TT Overlay Pro</title>
+
+  <style>
+    :root{
+      --bg: rgba(12,14,18,.88);
+      --stroke: rgba(255,255,255,.08);
+      --text: rgba(255,255,255,.95);
+      --accentA: #0007f8;
+      --accentB: #9b00c5;
+      --shadow:0 12px 40px rgba(0,0,0,.5);
+      --radius:14px;
+    }
+
+    html,body{
+      margin:0;
+      background:transparent;
+      font-family:-apple-system,system-ui,Segoe UI,Roboto;
+    }
+
+    /* ===== OVERLAY POSITION ===== */
+    .overlay{
+      position:fixed;
+      bottom:28px;
+      left:28px;
+      width:420px;
+      color:var(--text);
+      filter:drop-shadow(var(--shadow));
+    }
+
+    /* ===== BANNERS (AU-DESSUS DE LA CARTE) ===== */
+    .banners{
+      position:absolute;
+      bottom:135px; /* position exacte au-dessus de la carte */
+      left:0;
+      width:100%;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:6px;
+    }
+
+    .banner{
+      display:none;
+      padding:8px 22px;
+      border-radius:8px;
+      font-weight:700;
+      letter-spacing:1px;
+      background:rgba(0,0,0,.85);
+      animation:fade .25s ease;
+      font-size:14px;
+    }
+
+    .banner.timeout{ border:2px solid #FFC107; }
+    .banner.match{ border:2px solid #FF1744; }
+
+    @keyframes fade{
+      from{opacity:0; transform:translateY(-6px);}
+      to{opacity:1; transform:translateY(0);}
+    }
+
+    /* ===== CARD ===== */
+    .card{
+      background:var(--bg);
+      border:1px solid var(--stroke);
+      border-radius:var(--radius);
+      overflow:hidden;
+      backdrop-filter:blur(12px);
+    }
+
+    /* ===== ROW ===== */
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 16px auto 60px;
+      align-items:center;
+      gap:10px;
+      padding:14px;
+    }
+
+    .row + .row{
+      border-top:1px solid rgba(255,255,255,.08);
+    }
+
+    .row.a{ box-shadow: inset 7px 0 0 var(--accentB); }
+    .row.b{ box-shadow: inset 7px 0 0 var(--accentA); }
+
+    /* ✅ NOM + HORLOGE : horloge toujours au même endroit */
+    .nameWrap{
+      display:grid;
+      grid-template-columns: 1fr 18px; /* nom | 🕒 */
+      align-items:center;
+      gap:8px;
+      width:100%;
+      min-width:0;
+    }
+
+    .name{
+      font-weight:600;
+      letter-spacing:.5px;
+      min-width:0;
+      overflow:hidden;
+      display:-webkit-box;
+      -webkit-line-clamp:2;        /* 2 lignes max */
+      -webkit-box-orient:vertical;
+    }
+
+    /* SERVICE */
+    .service{
+      font-size:12px;
+      opacity:.25;
+      transition:.2s ease;
+    }
+    .service.on{
+      opacity:1;
+      transform:translateX(3px);
+    }
+
+    /* TIMEOUT ICON */
+    .timeoutIcon{
+      font-size:11px;
+      opacity:.2;
+      justify-self:end; /* ✅ fixe à droite */
+    }
+    .timeoutIcon.on{ opacity:1; }
+
+    /* SETS */
+    .sets{ display:flex; gap:6px; }
+
+    .set{
+      width:11px;
+      height:11px;
+      border-radius:3px;
+      background:rgba(255,255,255,.15);
+    }
+    .set.b{ background:var(--accentA); }
+    .set.a{ background:var(--accentB); }
+
+    /* SCORE */
+    .score{
+      font-size:30px;
+      font-weight:900;
+      text-align:right;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="overlay">
+
+  <!-- BANNERS -->
+  <div class="banners">
+    <div class="banner timeout" id="timeoutBanner">TEMPS MORT</div>
+    <div class="banner match" id="matchBanner">BALLE DE MATCH</div>
+  </div>
+
+  <!-- SCORE CARD -->
+  <div class="card">
+
+    <!-- LIGNE DU HAUT (affichage) -->
+    <div class="row a">
+      <div class="nameWrap">
+        <span class="name" id="nameA">JOUEUR A</span>
+        <span class="timeoutIcon" id="toA">🕒</span>
+      </div>
+
+      <div class="service" id="serveA">▶</div>
+
+      <div class="sets" id="setsA"></div>
+
+      <div class="score" id="scoreA">0</div>
+    </div>
+
+    <!-- LIGNE DU BAS (affichage) -->
+    <div class="row b">
+      <div class="nameWrap">
+        <span class="name" id="nameB">JOUEUR B</span>
+        <span class="timeoutIcon" id="toB">🕒</span>
+      </div>
+
+      <div class="service" id="serveB">▶</div>
+
+      <div class="sets" id="setsB"></div>
+
+      <div class="score" id="scoreB">0</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const socket = new WebSocket("ws://localhost:8787");
+  const el = (id) => document.getElementById(id);
+
+  let stBestOf = 5; // défaut BO5
+
+  function teamName(st, team) {
+    const mode = st.mode || "singles";
+    if (team === "A") {
+      const a1 = st.A1 ?? "JOUEUR A";
+      const a2 = (st.A2 ?? "").trim();
+      return (mode === "doubles" && a2) ? `${a1} / ${a2}` : a1;
+    } else {
+      const b1 = st.B1 ?? "JOUEUR B";
+      const b2 = (st.B2 ?? "").trim();
+      return (mode === "doubles" && b2) ? `${b1} / ${b2}` : b1;
+    }
+  }
+
+  function renderSets(container, count, team, bestOf){
+    container.innerHTML = "";
+    const needed = Math.ceil((bestOf || 5) / 2); // BO3 -> 2, BO5 -> 3
+    for(let i=0;i<needed;i++){
+      const d = document.createElement("div");
+      d.className = "set";
+      if(i < (count || 0)){
+        d.classList.add(team === "A" ? "a" : "b");
+      }
+      container.appendChild(d);
+    }
+  }
+
+  function showBanners(timeoutActive, matchPointFor){
+    const timeout = el("timeoutBanner");
+    const match = el("matchBanner");
+
+    timeout.style.display = "none";
+    match.style.display = "none";
+
+    if(timeoutActive && matchPointFor){
+      timeout.style.display = "block";
+      match.style.display = "block";
+    } else if(timeoutActive){
+      timeout.style.display = "block";
+    } else if(matchPointFor){
+      match.style.display = "block";
+    }
+  }
+
+  socket.onmessage = (event) => {
+    const st = JSON.parse(event.data);
+
+    if (typeof st.bestOf === "number") stBestOf = st.bestOf;
+
+    // swap côté affichage
+    const swap = !!st.displaySwapped;
+    const topTeam = swap ? "B" : "A";
+    const botTeam = swap ? "A" : "B";
+
+    // noms
+    el("nameA").textContent = teamName(st, topTeam);
+    el("nameB").textContent = teamName(st, botTeam);
+
+    // scores
+    const pointsTop = (topTeam === "A") ? st.pointsA : st.pointsB;
+    const pointsBot = (botTeam === "A") ? st.pointsA : st.pointsB;
+    el("scoreA").textContent = pointsTop ?? 0;
+    el("scoreB").textContent = pointsBot ?? 0;
+
+    // sets
+    const setsTop = (topTeam === "A") ? st.setsA : st.setsB;
+    const setsBot = (botTeam === "A") ? st.setsA : st.setsB;
+    renderSets(el("setsA"), setsTop, topTeam, stBestOf);
+    renderSets(el("setsB"), setsBot, botTeam, stBestOf);
+
+    // service
+    const server = st.server; // "A" ou "B"
+    el("serveA").classList.toggle("on", server === topTeam);
+    el("serveB").classList.toggle("on", server === botTeam);
+
+    // timeout used icône 🕒
+    const toUsedTop = (topTeam === "A") ? st.timeoutUsedA : st.timeoutUsedB;
+    const toUsedBot = (botTeam === "A") ? st.timeoutUsedA : st.timeoutUsedB;
+    el("toA").classList.toggle("on", !!toUsedTop);
+    el("toB").classList.toggle("on", !!toUsedBot);
+
+    // bannières
+    showBanners(!!st.timeoutActive, st.matchPointFor);
+  };
+
+  socket.onerror = () => {
+    console.log("WebSocket error (overlay)");
+  };
+</script>
+
+</body>
+</html>
