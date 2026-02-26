@@ -109,15 +109,30 @@
 </div>
 
 <script>
-  new WebSocket(
+  const statusEl = document.getElementById("status");
+
+  const socket = new WebSocket(
           location.protocol === "https:"
                   ? "wss://" + location.host
                   : "ws://" + location.host
   );
-  const statusEl = document.getElementById("status");
+
+  socket.onopen = () => {
+    statusEl.innerHTML = "Connecté ✅";
+  };
+
+  socket.onerror = () => {
+    statusEl.innerHTML = "Erreur WebSocket ❌";
+  };
+
+  socket.onclose = () => {
+    statusEl.innerHTML = "Connexion perdue ⚠️";
+  };
 
   function send(type, extra = {}) {
-    socket.send(JSON.stringify({ type, ...extra }));
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type, ...extra }));
+    }
   }
 
   function confirmResetMatch(){
@@ -125,6 +140,7 @@
       send("RESET_MATCH");
     }
   }
+
   function confirmResetAll(){
     if(confirm("Reset TOTAL (tout revient par défaut) ?")){
       send("RESET_ALL");
@@ -148,22 +164,26 @@
   socket.onmessage = (event) => {
     const st = JSON.parse(event.data);
 
-    const nameA = st.mode === "doubles" ? `${st.A1}${st.A2 ? " / " + st.A2 : ""}` : st.A1;
-    const nameB = st.mode === "doubles" ? `${st.B1}${st.B2 ? " / " + st.B2 : ""}` : st.B1;
+    const nameA = st.mode === "doubles"
+            ? `${st.A1}${st.A2 ? " / " + st.A2 : ""}`
+            : st.A1;
+
+    const nameB = st.mode === "doubles"
+            ? `${st.B1}${st.B2 ? " / " + st.B2 : ""}`
+            : st.B1;
 
     statusEl.innerHTML = `
-    <b>${nameA}</b> <span class="badge">A</span><br>
-    Sets: ${st.setsA} — Points: ${st.pointsA} — Timeout utilisé: ${st.timeoutUsedA}<br><br>
+      <b>${nameA}</b> <span class="badge">A</span><br>
+      Sets: ${st.setsA} — Points: ${st.pointsA} — Timeout utilisé: ${st.timeoutUsedA}<br><br>
 
-    <b>${nameB}</b> <span class="badge">B</span><br>
-    Sets: ${st.setsB} — Points: ${st.pointsB} — Timeout utilisé: ${st.timeoutUsedB}<br><br>
+      <b>${nameB}</b> <span class="badge">B</span><br>
+      Sets: ${st.setsB} — Points: ${st.pointsB} — Timeout utilisé: ${st.timeoutUsedB}<br><br>
 
-    <b>Service :</b> ${st.server}<br>
-    <b>Temps mort actif :</b> ${st.timeoutActive}<br>
-    <b>Balle de match :</b> ${st.matchPointFor ? st.matchPointFor : "Non"}<br>
-    <b>Match fini :</b> ${st.finished}<br>
-    <b>Affichage inversé :</b> ${st.displaySwapped}
-  `;
+      <b>Service :</b> ${st.server}<br>
+      <b>Temps mort actif :</b> ${st.timeoutActive}<br>
+      <b>Balle de match :</b> ${st.matchPointFor ? st.matchPointFor : "Non"}<br>
+      <b>Match fini :</b> ${st.finished}
+    `;
   };
 
   // Tabs
