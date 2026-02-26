@@ -152,75 +152,133 @@
                   ? "wss://" + location.host
                   : "ws://" + location.host
   );
-  const el = id=>document.getElementById(id);
 
-  /* CONFETTI SIMPLE */
-  const canvas = document.getElementById("confetti");
+  const el = id => document.getElementById(id);
+
+  /* =============================
+     DEBUG CONNEXION
+  ============================= */
+
+  socket.onopen = () => {
+    console.log("Showtime connecté ✅");
+  };
+
+  socket.onerror = () => {
+    console.log("Showtime erreur ❌");
+  };
+
+  socket.onclose = () => {
+    console.log("Showtime connexion perdue ⚠️");
+  };
+
+  /* =============================
+     CONFETTI
+  ============================= */
+
+  const canvas = el("confetti");
   const ctx = canvas.getContext("2d");
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
 
   let confetti = [];
+  let confettiRunning = false;
 
-  function createConfetti(){
-    for(let i=0;i<200;i++){
+  function createConfetti() {
+    confetti = [];
+    for (let i = 0; i < 200; i++) {
       confetti.push({
-        x:Math.random()*canvas.width,
-        y:Math.random()*canvas.height,
-        r:Math.random()*6,
-        d:Math.random()*10+5
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 6 + 2,
+        d: Math.random() * 6 + 3
       });
     }
   }
 
-  function drawConfetti(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle="white";
-    confetti.forEach(c=>{
+  function drawConfetti() {
+    if (!confettiRunning) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "white";
+
+    confetti.forEach(c => {
       ctx.beginPath();
-      ctx.arc(c.x,c.y,c.r,0,Math.PI*2);
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
       ctx.fill();
-      c.y+=c.d;
-      if(c.y>canvas.height) c.y=0;
+
+      c.y += c.d;
+      if (c.y > canvas.height) c.y = 0;
     });
+
     requestAnimationFrame(drawConfetti);
   }
 
-  function teamName(st,team){
-    return team==="A"? st.A1 : st.B1;
+  /* =============================
+     TEAM NAME
+  ============================= */
+
+  function teamName(st, team) {
+    if (team === "A") {
+      return st.mode === "doubles"
+              ? `${st.A1}${st.A2 ? " / " + st.A2 : ""}`
+              : st.A1;
+    } else {
+      return st.mode === "doubles"
+              ? `${st.B1}${st.B2 ? " / " + st.B2 : ""}`
+              : st.B1;
+    }
   }
 
-  ws.onmessage=(e)=>{
-    const st=JSON.parse(e.data);
+  /* =============================
+     WEBSOCKET UPDATE
+  ============================= */
 
-    if(!st.finished){
+  socket.onmessage = (e) => {
+    const st = JSON.parse(e.data);
+
+    if (!st.finished) {
       el("wrap").classList.remove("show");
+      confettiRunning = false;
       return;
     }
 
+    // Flash intro
     el("flash").classList.add("play");
+    setTimeout(() => el("flash").classList.remove("play"), 600);
+
     el("wrap").classList.add("show");
 
-    const winner = st.setsA>st.setsB ? "A":"B";
+    const winner = st.setsA > st.setsB ? "A" : "B";
 
-    el("winnerName").textContent=teamName(st,winner);
-    el("finalScore").textContent=`${st.setsA} – ${st.setsB}`;
+    el("winnerName").textContent = teamName(st, winner);
+    el("finalScore").textContent = `${st.setsA} – ${st.setsB}`;
 
-    const sets = st.pointHistory
-            .filter(p=>p.type==="SET_END")
-            .map(p=>p.score);
+    // Liste des sets
+    const container = el("setList");
+    container.innerHTML = "";
 
-    const container=el("setList");
-    container.innerHTML="";
-    sets.forEach((s,i)=>{
-      const d=document.createElement("div");
-      d.className="set";
-      d.textContent=`SET ${i+1}: ${s.a} – ${s.b}`;
+    const sets = (st.pointHistory || [])
+            .filter(p => p.type === "SET_END")
+            .map(p => p.score);
+
+    sets.forEach((s, i) => {
+      const d = document.createElement("div");
+      d.className = "set";
+      d.textContent = `SET ${i + 1}: ${s.a} – ${s.b}`;
       container.appendChild(d);
     });
 
-    createConfetti();
-    drawConfetti();
+    // Confetti
+    if (!confettiRunning) {
+      createConfetti();
+      confettiRunning = true;
+      drawConfetti();
+    }
   };
 </script>
 
