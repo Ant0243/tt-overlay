@@ -1,10 +1,16 @@
-const WebSocket = require("ws");
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 
 const app = express();
+
+// Dossier public
 app.use(express.static("public"));
+
+// Redirection racine
+app.get("/", (req, res) => {
+    res.redirect("/overlay.html");
+});
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
@@ -12,9 +18,8 @@ const wss = new WebSocket.Server({ server });
 const port = process.env.PORT || 8787;
 
 server.listen(port, () => {
-    console.log("Serveur en ligne sur port", port);
+    console.log("🏓 Serveur TT Compétition lancé sur port", port);
 });
-
 /* =============================
    INITIAL STATE
 ============================= */
