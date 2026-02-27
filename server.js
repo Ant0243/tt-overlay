@@ -229,6 +229,9 @@ function resetMatchKeepSettings() {
 
     state.firstServerOfSet = state.server;
 
+    // 🔥 RESET HISTORIQUE DES SETS
+    state.pointHistory = [];
+
     state.pointHistory.push({
         t: Date.now(),
         type: "RESET_MATCH"
