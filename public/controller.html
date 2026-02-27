@@ -90,6 +90,7 @@
     .btnA{background:#0007f8;}
     .btnB{background:#9b00c5;}
     .timeout{background:#ff9800;}
+    .endTimeout{background:#ffc107;color:#111;}
     .used{opacity:.4;pointer-events:none;}
     .small{font-size:16px;padding:12px;}
     .danger{background:#b00020;}
@@ -140,6 +141,10 @@
     <button class="timeout" id="toA">Temps mort A</button>
     <button class="timeout" id="toB">Temps mort B</button>
 
+    <button class="endTimeout" id="endTimeout" style="display:none;">
+      Fin du temps mort
+    </button>
+
     <button class="small" onclick="safeSend('UNDO')">Annuler</button>
     <button class="small danger" onclick="safeSend('RESET_MATCH')">Reset Match</button>
 
@@ -185,7 +190,7 @@
 </div>
 
 <script>
-  const TOKEN="moncode123"; // même que serveur
+  const TOKEN="moncode123";
 
   const socket=new WebSocket(
           (location.protocol==="https:"?"wss://":"ws://")
@@ -221,8 +226,6 @@
   }
 
   function applySettings(){
-    if(socket.readyState!==1) return;
-
     socket.send(JSON.stringify({
       type:"UPDATE_SETTINGS",
       mode:el("mode").value,
@@ -250,19 +253,42 @@
     el("btnA").textContent="+1 "+nameA;
     el("btnB").textContent="+1 "+nameB;
 
-    el("btnA").onclick=()=>{safeSend("POINT_A");flash("A");};
-    el("btnB").onclick=()=>{safeSend("POINT_B");flash("B");};
+    el("btnA").onclick=()=>{
+      safeSend("POINT_A");
+      flash("A");
+    };
+    el("btnB").onclick=()=>{
+      safeSend("POINT_B");
+      flash("B");
+    };
 
     el("toA").onclick=()=>safeSend("TIMEOUT_A");
     el("toB").onclick=()=>safeSend("TIMEOUT_B");
+    el("endTimeout").onclick=()=>safeSend("END_TIMEOUT");
 
     el("toA").classList.toggle("used",st.timeoutUsedA);
     el("toB").classList.toggle("used",st.timeoutUsedB);
 
-    // verrou paramètres si match commencé
+    // Afficher bouton fin timeout
+    el("endTimeout").style.display = st.timeoutActive ? "block" : "none";
+
+    // Bloquer points pendant timeout
+    el("btnA").disabled = st.timeoutActive;
+    el("btnB").disabled = st.timeoutActive;
+
+    // Verrou paramètres si match commencé
     if(st.pointsA>0 || st.pointsB>0){
       el("settings").classList.add("locked");
     }
+
+    // Sync paramètres
+    el("mode").value=st.mode;
+    el("A1").value=st.A1;
+    el("A2").value=st.A2;
+    el("B1").value=st.B1;
+    el("B2").value=st.B2;
+    el("bestOf").value=st.bestOf;
+    el("server").value=st.server;
   };
 
   function switchPage(page,e){
