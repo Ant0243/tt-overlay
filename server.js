@@ -359,3 +359,4 @@ wss.on("connection", ws => {
 });
 
 console.log("🏓 Serveur TT Compétition lancé sur ws://localhost:8787");
+const AUTH_TOKEN = process.env.AUTH_TOKEN || "moncode123";

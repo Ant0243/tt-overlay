@@ -3,61 +3,146 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TT Controller Pro</title>
+  <title>TT CONTROL PRO</title>
+
   <style>
-    body{margin:0;background:#0e1117;font-family:-apple-system,system-ui;color:#fff}
-    .wrapper{max-width:560px;margin:auto;padding:18px}
-    .tabs{display:flex;gap:10px;margin-bottom:14px}
-    .tab{flex:1;background:#1f242c;padding:10px;text-align:center;border-radius:10px;cursor:pointer;font-weight:700}
-    .tab.active{background:#2F7DFF}
-    .page{display:none}
-    .page.active{display:block}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
-    button{border:none;padding:14px;border-radius:12px;font-weight:800;cursor:pointer}
-    button:active{transform:scale(.98)}
-    .blue{background: #9b00c5
+    body{
+      margin:0;
+      background:#11151c;
+      font-family:-apple-system,system-ui;
+      color:white;
     }
-    .red{background: #0007f8
+
+    .wrapper{
+      max-width:650px;
+      margin:auto;
+      padding:18px;
     }
-    .orange{background:#ff9800;color:#111}
-    .gray{background:#444}
-    .dark{background:#1f242c}
-    .full{grid-column:span 2}
-    .card{background:#141a22;border-radius:14px;padding:14px;line-height:1.6}
-    label{display:block;margin:10px 0 6px;font-weight:700;opacity:.9}
-    input,select{width:100%;padding:10px;border-radius:10px;border:none;background:#1a1f27;color:#fff}
-    .small{opacity:.8;font-size:12px;margin-top:8px}
-    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#1f242c;margin-left:6px;font-size:12px}
+
+    .tabs{
+      display:flex;
+      gap:10px;
+      margin-bottom:15px;
+    }
+
+    .tab{
+      flex:1;
+      padding:12px;
+      background:#1e2530;
+      text-align:center;
+      border-radius:12px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .tab.active{ background:#0007f8; }
+
+    .page{display:none;}
+    .page.active{display:block;}
+
+    .scoreGrid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:15px;
+      margin-bottom:15px;
+    }
+
+    .card{
+      background:#1e2530;
+      padding:20px;
+      border-radius:18px;
+      text-align:center;
+      transition:.2s;
+    }
+
+    .card.flash{
+      animation:flash .25s ease;
+    }
+
+    @keyframes flash{
+      50%{transform:scale(1.08);}
+    }
+
+    .name{
+      font-weight:800;
+      margin-bottom:8px;
+    }
+
+    .points{
+      font-size:42px;
+      font-weight:900;
+    }
+
+    button{
+      border:none;
+      border-radius:16px;
+      font-size:22px;
+      padding:18px;
+      margin:6px 0;
+      width:100%;
+      font-weight:900;
+      cursor:pointer;
+      transition:.2s;
+    }
+
+    button:active{transform:scale(.95);}
+
+    .btnA{background:#0007f8;}
+    .btnB{background:#9b00c5;}
+    .timeout{background:#ff9800;}
+    .used{opacity:.4;pointer-events:none;}
+    .small{font-size:16px;padding:12px;}
+    .danger{background:#b00020;}
+
+    input,select{
+      width:100%;
+      padding:10px;
+      margin:8px 0;
+      border-radius:10px;
+      border:none;
+      background:#1e2530;
+      color:white;
+    }
+
+    .locked{
+      opacity:.35;
+      pointer-events:none;
+    }
   </style>
 </head>
 <body>
+
 <div class="wrapper">
 
   <div class="tabs">
-    <div class="tab active" data-page="match">Match</div>
-    <div class="tab" data-page="settings">Paramètres</div>
+    <div class="tab active" onclick="switchPage('match',event)">Match</div>
+    <div class="tab" onclick="switchPage('settings',event)">Paramètres</div>
   </div>
 
   <!-- MATCH -->
   <div id="match" class="page active">
 
-    <div class="grid">
-      <button class="blue" onclick="send('POINT_A')">+1 ÉQUIPE A</button>
-      <button class="red" onclick="send('POINT_B')">+1 ÉQUIPE B</button>
+    <div class="scoreGrid">
+      <div class="card" id="cardA">
+        <div class="name" id="nameA">JOUEUR A</div>
+        <div class="points" id="scoreA">0</div>
+      </div>
 
-      <button class="orange" onclick="send('TIMEOUT_A')">Temps mort A</button>
-      <button class="orange" onclick="send('TIMEOUT_B')">Temps mort B</button>
-
-      <button class="gray full" onclick="send('END_TIMEOUT')">Fin temps mort</button>
-
-      <button class="dark" onclick="send('UNDO')">Undo (annuler)</button>
-      <button class="dark" onclick="confirmResetMatch()">Reset match</button>
-
-      <button class="gray full" onclick="confirmResetAll()">Reset TOTAL</button>
+      <div class="card" id="cardB">
+        <div class="name" id="nameB">JOUEUR B</div>
+        <div class="points" id="scoreB">0</div>
+      </div>
     </div>
 
-    <div class="card" id="status">Connexion...</div>
-    <div class="small">Astuce : Undo annule aussi un set gagné (si c’était la dernière action).</div>
+    <button class="btnA" id="btnA"></button>
+    <button class="btnB" id="btnB"></button>
+
+    <button class="timeout" id="toA">Temps mort A</button>
+    <button class="timeout" id="toB">Temps mort B</button>
+
+    <button class="small" onclick="safeSend('UNDO')">Annuler</button>
+    <button class="small danger" onclick="safeSend('RESET_MATCH')">Reset Match</button>
+
   </div>
 
   <!-- SETTINGS -->
@@ -69,133 +154,124 @@
       <option value="doubles">Double</option>
     </select>
 
-    <label>Équipe A - Joueur 1</label>
-    <input id="A1" placeholder="Ex: Dupont">
-    <label>Équipe A - Joueur 2 (double)</label>
-    <input id="A2" placeholder="Ex: Martin">
+    <label>A1</label>
+    <input id="A1">
 
-    <label>Équipe B - Joueur 1</label>
-    <input id="B1" placeholder="Ex: Durand">
-    <label>Équipe B - Joueur 2 (double)</label>
-    <input id="B2" placeholder="Ex: Jean">
+    <label>A2</label>
+    <input id="A2">
+
+    <label>B1</label>
+    <input id="B1">
+
+    <label>B2</label>
+    <input id="B2">
 
     <label>Format</label>
     <select id="bestOf">
-      <option value="3">BO3 (2 sets gagnants)</option>
-      <option value="5" selected>BO5 (3 sets gagnants)</option>
+      <option value="3">BO3</option>
+      <option value="5" selected>BO5</option>
     </select>
 
     <label>Premier serveur</label>
     <select id="server">
-      <option value="A">Équipe A</option>
-      <option value="B">Équipe B</option>
+      <option value="A">A</option>
+      <option value="B">B</option>
     </select>
 
-    <label>Inversion de côté auto à chaque set</label>
-    <select id="autoSwap">
-      <option value="true" selected>Oui</option>
-      <option value="false">Non</option>
-    </select>
+    <button class="btnA" onclick="applySettings()">Appliquer</button>
 
-    <div class="grid">
-      <button class="blue full" onclick="applySettings()">Appliquer</button>
-    </div>
-
-    <div class="card small">
-      Le double affiche “A1 / A2” et “B1 / B2”. Si tu restes en simple, A2/B2 sont ignorés.
-    </div>
   </div>
 
 </div>
 
 <script>
-  const statusEl = document.getElementById("status");
+  const TOKEN="moncode123"; // même que serveur
 
-  const socket = new WebSocket(
-          location.protocol === "https:"
-                  ? "wss://" + location.host
-                  : "ws://" + location.host
+  const socket=new WebSocket(
+          (location.protocol==="https:"?"wss://":"ws://")
+          +location.host+"?token="+TOKEN
   );
 
-  socket.onopen = () => {
-    statusEl.innerHTML = "Connecté ✅";
-  };
+  const el=id=>document.getElementById(id);
 
-  socket.onerror = () => {
-    statusEl.innerHTML = "Erreur WebSocket ❌";
-  };
-
-  socket.onclose = () => {
-    statusEl.innerHTML = "Connexion perdue ⚠️";
-  };
-
-  function send(type, extra = {}) {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type, ...extra }));
+  function safeSend(type){
+    if(socket.readyState!==1){
+      alert("Connexion perdue");
+      return;
     }
+    socket.send(JSON.stringify({type}));
   }
 
-  function confirmResetMatch(){
-    if(confirm("Reset match (points+sets+timeouts) ? Les noms et le format restent.")){
-      send("RESET_MATCH");
-    }
+  function flash(team){
+    const card = team==="A"?el("cardA"):el("cardB");
+    card.classList.add("flash");
+    setTimeout(()=>card.classList.remove("flash"),250);
   }
 
-  function confirmResetAll(){
-    if(confirm("Reset TOTAL (tout revient par défaut) ?")){
-      send("RESET_ALL");
+  function teamName(st,team){
+    if(team==="A"){
+      return st.mode==="doubles" && st.A2
+              ? st.A1+" / "+st.A2
+              : st.A1;
+    }else{
+      return st.mode==="doubles" && st.B2
+              ? st.B1+" / "+st.B2
+              : st.B1;
     }
   }
 
   function applySettings(){
-    const payload = {
-      mode: document.getElementById("mode").value,
-      A1: document.getElementById("A1").value,
-      A2: document.getElementById("A2").value,
-      B1: document.getElementById("B1").value,
-      B2: document.getElementById("B2").value,
-      bestOf: parseInt(document.getElementById("bestOf").value, 10),
-      server: document.getElementById("server").value,
-      autoSwapSides: document.getElementById("autoSwap").value === "true"
-    };
-    send("UPDATE_SETTINGS", payload);
+    if(socket.readyState!==1) return;
+
+    socket.send(JSON.stringify({
+      type:"UPDATE_SETTINGS",
+      mode:el("mode").value,
+      A1:el("A1").value,
+      A2:el("A2").value,
+      B1:el("B1").value,
+      B2:el("B2").value,
+      bestOf:parseInt(el("bestOf").value),
+      server:el("server").value
+    }));
   }
 
-  socket.onmessage = (event) => {
-    const st = JSON.parse(event.data);
+  socket.onmessage=(e)=>{
+    const st=JSON.parse(e.data);
 
-    const nameA = st.mode === "doubles"
-            ? `${st.A1}${st.A2 ? " / " + st.A2 : ""}`
-            : st.A1;
+    const nameA=teamName(st,"A");
+    const nameB=teamName(st,"B");
 
-    const nameB = st.mode === "doubles"
-            ? `${st.B1}${st.B2 ? " / " + st.B2 : ""}`
-            : st.B1;
+    el("nameA").textContent=nameA;
+    el("nameB").textContent=nameB;
 
-    statusEl.innerHTML = `
-      <b>${nameA}</b> <span class="badge">A</span><br>
-      Sets: ${st.setsA} — Points: ${st.pointsA} — Timeout utilisé: ${st.timeoutUsedA}<br><br>
+    el("scoreA").textContent=st.pointsA;
+    el("scoreB").textContent=st.pointsB;
 
-      <b>${nameB}</b> <span class="badge">B</span><br>
-      Sets: ${st.setsB} — Points: ${st.pointsB} — Timeout utilisé: ${st.timeoutUsedB}<br><br>
+    el("btnA").textContent="+1 "+nameA;
+    el("btnB").textContent="+1 "+nameB;
 
-      <b>Service :</b> ${st.server}<br>
-      <b>Temps mort actif :</b> ${st.timeoutActive}<br>
-      <b>Balle de match :</b> ${st.matchPointFor ? st.matchPointFor : "Non"}<br>
-      <b>Match fini :</b> ${st.finished}
-    `;
+    el("btnA").onclick=()=>{safeSend("POINT_A");flash("A");};
+    el("btnB").onclick=()=>{safeSend("POINT_B");flash("B");};
+
+    el("toA").onclick=()=>safeSend("TIMEOUT_A");
+    el("toB").onclick=()=>safeSend("TIMEOUT_B");
+
+    el("toA").classList.toggle("used",st.timeoutUsedA);
+    el("toB").classList.toggle("used",st.timeoutUsedB);
+
+    // verrou paramètres si match commencé
+    if(st.pointsA>0 || st.pointsB>0){
+      el("settings").classList.add("locked");
+    }
   };
 
-  // Tabs
-  document.querySelectorAll(".tab").forEach(t=>{
-    t.addEventListener("click", ()=>{
-      document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
-      t.classList.add("active");
-      const page = t.dataset.page;
-      document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-      document.getElementById(page).classList.add("active");
-    });
-  });
+  function switchPage(page,e){
+    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    el(page).classList.add("active");
+    e.target.classList.add("active");
+  }
 </script>
+
 </body>
 </html>
