@@ -2,53 +2,46 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>TT SHOWTIME</title>
+  <title>TT GRAND FINALE</title>
 
   <style>
     html,body{
       margin:0;
       height:100%;
-      width:100%;
       overflow:hidden;
-      background: #0007f8;
-      font-family:-apple-system,system-ui,Segoe UI,Roboto;
+      background:black;
+      font-family:-apple-system,system-ui;
     }
 
-    /* BACKGROUND ANIMÉ */
+    /* BACKGROUND ENERGIE */
     .bg{
       position:fixed;
       inset:0;
-      background:radial-gradient(circle at center, rgba(255,255,255,.05), transparent),
-      radial-gradient(circle at 30% 70%, rgba(255,0,0,.15), transparent),
-      radial-gradient(circle at 70% 30%, rgba(0,0,255,.15), transparent);
-      animation:bgMove 12s linear infinite alternate;
-      z-index:-2;
+      background:radial-gradient(circle at center, #1a1aff, #000);
+      animation:pulseBg 4s infinite alternate;
+    }
+    @keyframes pulseBg{
+      from{transform:scale(1);}
+      to{transform:scale(1.1);}
     }
 
-    @keyframes bgMove{
-      from{filter:hue-rotate(0deg);}
-      to{filter:hue-rotate(360deg);}
-    }
-
-    /* FLASH INTRO */
-    .flash{
+    /* LIGHT IMPACT */
+    .light{
       position:fixed;
       inset:0;
-      background:white;
+      background:radial-gradient(circle,rgba(255,255,255,.6),transparent 60%);
       opacity:0;
       pointer-events:none;
     }
-
-    .flash.play{
-      animation:flash 0.6s ease;
+    .light.play{
+      animation:lightFlash .8s ease;
+    }
+    @keyframes lightFlash{
+      0%{opacity:1;transform:scale(.5);}
+      100%{opacity:0;transform:scale(2);}
     }
 
-    @keyframes flash{
-      0%{opacity:1;}
-      100%{opacity:0;}
-    }
-
-    /* MAIN WRAP */
+    /* MAIN */
     .wrap{
       position:fixed;
       inset:0;
@@ -56,76 +49,76 @@
       flex-direction:column;
       justify-content:center;
       align-items:center;
+      text-align:center;
+      color:white;
       opacity:0;
+      transform:scale(.8);
       transition:1s ease;
     }
-
     .wrap.show{
       opacity:1;
+      transform:scale(1);
     }
 
-    /* VICTORY TEXT */
-    .victory{
+    /* TITLE */
+    .title{
+      font-size:110px;
+      font-weight:900;
+      letter-spacing:10px;
+      text-transform:uppercase;
+      background:linear-gradient(90deg,#fff,#ff4dff,#00c3ff);
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      animation:shine 3s linear infinite;
+    }
+    @keyframes shine{
+      0%{filter:hue-rotate(0deg);}
+      100%{filter:hue-rotate(360deg);}
+    }
+
+    /* WINNER */
+    .winner{
       font-size:120px;
       font-weight:900;
-      letter-spacing:8px;
-      text-transform:uppercase;
-      animation:zoomIn 1s ease forwards;
-    }
-
-    @keyframes zoomIn{
-      from{transform:scale(0.4);opacity:0;}
-      to{transform:scale(1);opacity:1;}
-    }
-
-    /* WINNER NAME */
-    .winner{
-      font-size:90px;
-      font-weight:900;
       margin-top:40px;
-      animation:glow 2s ease infinite alternate;
+      text-shadow:0 0 40px rgba(255,255,255,.8);
+      animation:dropIn 1s cubic-bezier(.2,1,.2,1);
     }
-
-    @keyframes glow{
-      from{ text-shadow:0 0 20px rgba(255,255,255,.2);}
-      to{ text-shadow:0 0 60px rgba(255,255,255,.9);}
-    }
-
-    /* SCORE */
-    .score{
-      font-size:60px;
-      font-weight:800;
-      margin-top:20px;
-      animation:popUp .9s ease forwards;
-    }
-
-    @keyframes popUp{
-      from{transform:translateY(50px);opacity:0;}
+    @keyframes dropIn{
+      from{transform:translateY(-200px);opacity:0;}
       to{transform:translateY(0);opacity:1;}
     }
 
-    /* SETS GRID */
+    /* FINAL SCORE */
+    .score{
+      font-size:80px;
+      margin-top:20px;
+      animation:pulse 1.5s infinite alternate;
+    }
+    @keyframes pulse{
+      from{transform:scale(1);}
+      to{transform:scale(1.1);}
+    }
+
+    /* SET DETAILS */
     .sets{
       display:flex;
-      gap:30px;
+      gap:25px;
       margin-top:60px;
     }
-
     .set{
       padding:20px 30px;
-      border-radius:12px;
-      background:rgba(255,255,255,.08);
-      font-size:28px;
-      font-weight:700;
-      animation:fadeInUp 1s ease forwards;
+      font-size:32px;
+      background:rgba(255,255,255,.1);
+      border-radius:14px;
+      animation:slideUp 1s ease forwards;
     }
-
-    @keyframes fadeInUp{
-      from{opacity:0;transform:translateY(40px);}
+    @keyframes slideUp{
+      from{opacity:0;transform:translateY(60px);}
       to{opacity:1;transform:translateY(0);}
     }
 
-    /* CONFETTI */
+    /* PARTICULES */
     canvas{
       position:fixed;
       inset:0;
@@ -136,150 +129,94 @@
 <body>
 
 <div class="bg"></div>
-<div class="flash" id="flash"></div>
-<canvas id="confetti"></canvas>
+<div class="light" id="light"></div>
+<canvas id="particles"></canvas>
 
 <div class="wrap" id="wrap">
-  <div class="victory">VICTOIRE</div>
+  <div class="title">GRAND FINAL</div>
   <div class="winner" id="winnerName"></div>
   <div class="score" id="finalScore"></div>
   <div class="sets" id="setList"></div>
 </div>
 
 <script>
-  const socket = new WebSocket(
-          location.protocol === "https:"
-                  ? "wss://" + location.host
-                  : "ws://" + location.host
+  const socket=new WebSocket(
+          location.protocol==="https:"?"wss://"+location.host:"ws://"+location.host
   );
 
-  const el = id => document.getElementById(id);
+  const el=id=>document.getElementById(id);
 
-  /* =============================
-     DEBUG CONNEXION
-  ============================= */
+  socket.onmessage=(e)=>{
+    const st=JSON.parse(e.data);
 
-  socket.onopen = () => {
-    console.log("Showtime connecté ✅");
-  };
-
-  socket.onerror = () => {
-    console.log("Showtime erreur ❌");
-  };
-
-  socket.onclose = () => {
-    console.log("Showtime connexion perdue ⚠️");
-  };
-
-  /* =============================
-     CONFETTI
-  ============================= */
-
-  const canvas = el("confetti");
-  const ctx = canvas.getContext("2d");
-
-  function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  resizeCanvas();
-  window.addEventListener("resize", resizeCanvas);
-
-  let confetti = [];
-  let confettiRunning = false;
-
-  function createConfetti() {
-    confetti = [];
-    for (let i = 0; i < 200; i++) {
-      confetti.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        r: Math.random() * 6 + 2,
-        d: Math.random() * 6 + 3
-      });
-    }
-  }
-
-  function drawConfetti() {
-    if (!confettiRunning) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "white";
-
-    confetti.forEach(c => {
-      ctx.beginPath();
-      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
-      ctx.fill();
-
-      c.y += c.d;
-      if (c.y > canvas.height) c.y = 0;
-    });
-
-    requestAnimationFrame(drawConfetti);
-  }
-
-  /* =============================
-     TEAM NAME
-  ============================= */
-
-  function teamName(st, team) {
-    if (team === "A") {
-      return st.mode === "doubles"
-              ? `${st.A1}${st.A2 ? " / " + st.A2 : ""}`
-              : st.A1;
-    } else {
-      return st.mode === "doubles"
-              ? `${st.B1}${st.B2 ? " / " + st.B2 : ""}`
-              : st.B1;
-    }
-  }
-
-  /* =============================
-     WEBSOCKET UPDATE
-  ============================= */
-
-  socket.onmessage = (e) => {
-    const st = JSON.parse(e.data);
-
-    if (!st.finished) {
+    if(!st.finished){
       el("wrap").classList.remove("show");
-      confettiRunning = false;
       return;
     }
 
-    // Flash intro
-    el("flash").classList.add("play");
-    setTimeout(() => el("flash").classList.remove("play"), 600);
+    el("light").classList.add("play");
+    setTimeout(()=>el("light").classList.remove("play"),800);
 
     el("wrap").classList.add("show");
 
-    const winner = st.setsA > st.setsB ? "A" : "B";
+    const winner=st.setsA>st.setsB?"A":"B";
+    const name = winner==="A"?st.A1:st.B1;
 
-    el("winnerName").textContent = teamName(st, winner);
-    el("finalScore").textContent = `${st.setsA} – ${st.setsB}`;
+    el("winnerName").textContent=name;
+    el("finalScore").textContent=`${st.setsA} – ${st.setsB}`;
 
-    // Liste des sets
-    const container = el("setList");
-    container.innerHTML = "";
+    const sets=(st.pointHistory||[])
+            .filter(p=>p.type==="SET_END")
+            .map(p=>p.score);
 
-    const sets = (st.pointHistory || [])
-            .filter(p => p.type === "SET_END")
-            .map(p => p.score);
-
-    sets.forEach((s, i) => {
-      const d = document.createElement("div");
-      d.className = "set";
-      d.textContent = `SET ${i + 1}: ${s.a} – ${s.b}`;
+    const container=el("setList");
+    container.innerHTML="";
+    sets.forEach((s,i)=>{
+      const d=document.createElement("div");
+      d.className="set";
+      d.textContent=`SET ${i+1}: ${s.a} – ${s.b}`;
       container.appendChild(d);
     });
 
-    // Confetti
-    if (!confettiRunning) {
-      createConfetti();
-      confettiRunning = true;
-      drawConfetti();
-    }
+    createParticles();
   };
+
+  /* PARTICULE SYSTEM */
+  const canvas=document.getElementById("particles");
+  const ctx=canvas.getContext("2d");
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
+
+  let parts=[];
+
+  function createParticles(){
+    parts=[];
+    for(let i=0;i<400;i++){
+      parts.push({
+        x:canvas.width/2,
+        y:canvas.height/2,
+        dx:(Math.random()-.5)*8,
+        dy:(Math.random()-.5)*8,
+        r:Math.random()*3+1
+      });
+    }
+    animate();
+  }
+
+  function animate(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="white";
+
+    parts.forEach(p=>{
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fill();
+      p.x+=p.dx;
+      p.y+=p.dy;
+    });
+
+    requestAnimationFrame(animate);
+  }
 </script>
 
 </body>
