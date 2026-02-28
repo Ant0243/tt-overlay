@@ -11,31 +11,25 @@
       --text: rgba(255,255,255,.95);
       --accentA: #0070ff;
       --accentB: #f80000;
-      --shadow:0 12px 40px rgba(0,0,0,.5);
-      --radius:14px;
     }
 
     html,body{
       margin:0;
       background:transparent;
-      font-family:-apple-system,system-ui,Segoe UI,Roboto;
+      font-family:-apple-system,system-ui;
     }
 
-    /* ===== OVERLAY POSITION ===== */
     .overlay{
       position:fixed;
       bottom:28px;
       left:28px;
       width:420px;
       color:var(--text);
-      filter:drop-shadow(var(--shadow));
     }
 
-    /* ===== BANNERS (AU-DESSUS DE LA CARTE) ===== */
     .banners{
       position:absolute;
-      bottom:135px; /* position exacte au-dessus de la carte */
-      left:0;
+      bottom:135px;
       width:100%;
       display:flex;
       flex-direction:column;
@@ -48,33 +42,24 @@
       padding:8px 22px;
       border-radius:8px;
       font-weight:700;
-      letter-spacing:1px;
       background:rgba(0,0,0,.85);
-      animation:fade .25s ease;
       font-size:14px;
     }
 
     .banner.timeout{ border:2px solid #FFC107; }
     .banner.match{ border:2px solid #FF1744; }
 
-    @keyframes fade{
-      from{opacity:0; transform:translateY(-6px);}
-      to{opacity:1; transform:translateY(0);}
-    }
-
-    /* ===== CARD ===== */
     .card{
       background:var(--bg);
       border:1px solid var(--stroke);
-      border-radius:var(--radius);
+      border-radius:14px;
       overflow:hidden;
       backdrop-filter:blur(12px);
     }
 
-    /* ===== ROW ===== */
     .row{
       display:grid;
-      grid-template-columns: 1fr 16px auto 60px;
+      grid-template-columns:1fr 16px auto 60px;
       align-items:center;
       gap:10px;
       padding:14px;
@@ -87,30 +72,24 @@
     .row.a{ box-shadow: inset 7px 0 0 var(--accentB); }
     .row.b{ box-shadow: inset 7px 0 0 var(--accentA); }
 
-    /* ✅ NOM + HORLOGE : horloge toujours au même endroit */
     .nameWrap{
       display:grid;
-      grid-template-columns: 1fr 18px; /* nom | 🕒 */
+      grid-template-columns:1fr 18px;
       align-items:center;
       gap:8px;
-      width:100%;
-      min-width:0;
     }
 
     .name{
       font-weight:600;
-      letter-spacing:.5px;
-      min-width:0;
       overflow:hidden;
       display:-webkit-box;
-      -webkit-line-clamp:2;        /* 2 lignes max */
+      -webkit-line-clamp:2;
       -webkit-box-orient:vertical;
     }
 
-    /* SERVICE */
     .service{
       font-size:12px;
-      opacity:.25;
+      opacity:0;
       transition:.2s ease;
     }
     .service.on{
@@ -118,15 +97,13 @@
       transform:translateX(3px);
     }
 
-    /* TIMEOUT ICON */
     .timeoutIcon{
       font-size:11px;
       opacity:.2;
-      justify-self:end; /* ✅ fixe à droite */
+      justify-self:end;
     }
     .timeoutIcon.on{ opacity:1; }
 
-    /* SETS */
     .sets{ display:flex; gap:6px; }
 
     .set{
@@ -138,7 +115,6 @@
     .set.b{ background:var(--accentA); }
     .set.a{ background:var(--accentB); }
 
-    /* SCORE */
     .score{
       font-size:30px;
       font-weight:900;
@@ -151,40 +127,30 @@
 
 <div class="overlay">
 
-  <!-- BANNERS -->
   <div class="banners">
     <div class="banner timeout" id="timeoutBanner">TEMPS MORT</div>
     <div class="banner match" id="matchBanner">BALLE DE MATCH</div>
   </div>
 
-  <!-- SCORE CARD -->
   <div class="card">
 
-    <!-- LIGNE DU HAUT (affichage) -->
     <div class="row a">
       <div class="nameWrap">
         <span class="name" id="nameA">JOUEUR A</span>
         <span class="timeoutIcon" id="toA">🕒</span>
       </div>
-
       <div class="service" id="serveA">▶</div>
-
       <div class="sets" id="setsA"></div>
-
       <div class="score" id="scoreA">0</div>
     </div>
 
-    <!-- LIGNE DU BAS (affichage) -->
     <div class="row b">
       <div class="nameWrap">
         <span class="name" id="nameB">JOUEUR B</span>
         <span class="timeoutIcon" id="toB">🕒</span>
       </div>
-
       <div class="service" id="serveB">▶</div>
-
       <div class="sets" id="setsB"></div>
-
       <div class="score" id="scoreB">0</div>
     </div>
 
@@ -193,111 +159,72 @@
 
 <script>
   const socket = new WebSocket(
-          location.protocol === "https:"
-                  ? "wss://" + location.host
-                  : "ws://" + location.host
+          (location.protocol === "https:" ? "wss://" : "ws://")
+          + location.host + "?token=moncode123"
   );
-  socket.onopen = () => {
-    console.log("Overlay connecté ✅");
-  };
 
-  socket.onerror = () => {
-    console.log("Overlay erreur ❌");
-  };
+  const el = id => document.getElementById(id);
+  let bestOf = 5;
 
-  socket.onclose = () => {
-    console.log("Overlay connexion perdue ⚠️");
-  };
-  const el = (id) => document.getElementById(id);
-
-  let stBestOf = 5; // défaut BO5
-
-  function teamName(st, team) {
-    const mode = st.mode || "singles";
-    if (team === "A") {
-      const a1 = st.A1 ?? "JOUEUR A";
-      const a2 = (st.A2 ?? "").trim();
-      return (mode === "doubles" && a2) ? `${a1} / ${a2}` : a1;
-    } else {
-      const b1 = st.B1 ?? "JOUEUR B";
-      const b2 = (st.B2 ?? "").trim();
-      return (mode === "doubles" && b2) ? `${b1} / ${b2}` : b1;
+  function teamName(st, team){
+    if(team==="A"){
+      return st.mode==="doubles" && st.A2
+              ? st.A1+" / "+st.A2
+              : st.A1;
+    }else{
+      return st.mode==="doubles" && st.B2
+              ? st.B1+" / "+st.B2
+              : st.B1;
     }
   }
 
-  function renderSets(container, count, team, bestOf){
-    container.innerHTML = "";
-    const needed = Math.ceil((bestOf || 5) / 2); // BO3 -> 2, BO5 -> 3
+  function renderSets(container,count,team){
+    container.innerHTML="";
+    const needed = Math.ceil(bestOf/2);
     for(let i=0;i<needed;i++){
-      const d = document.createElement("div");
-      d.className = "set";
-      if(i < (count || 0)){
-        d.classList.add(team === "A" ? "a" : "b");
+      const d=document.createElement("div");
+      d.className="set";
+      if(i<count){
+        d.classList.add(team==="A"?"a":"b");
       }
       container.appendChild(d);
     }
   }
 
-  function showBanners(timeoutActive, matchPointFor){
-    const timeout = el("timeoutBanner");
-    const match = el("matchBanner");
-
-    timeout.style.display = "none";
-    match.style.display = "none";
-
-    if(timeoutActive && matchPointFor){
-      timeout.style.display = "block";
-      match.style.display = "block";
-    } else if(timeoutActive){
-      timeout.style.display = "block";
-    } else if(matchPointFor){
-      match.style.display = "block";
-    }
-  }
-
-  socket.onmessage = (event) => {
+  socket.onmessage = (event)=>{
     const st = JSON.parse(event.data);
 
-    if (typeof st.bestOf === "number") stBestOf = st.bestOf;
+    bestOf = st.bestOf || 5;
 
-    // swap côté affichage
-    const swap = !!st.displaySwapped;
-    const topTeam = swap ? "B" : "A";
-    const botTeam = swap ? "A" : "B";
+    el("nameA").textContent = teamName(st,"A");
+    el("nameB").textContent = teamName(st,"B");
 
-    // noms
-    el("nameA").textContent = teamName(st, topTeam);
-    el("nameB").textContent = teamName(st, botTeam);
+    el("scoreA").textContent = st.pointsA;
+    el("scoreB").textContent = st.pointsB;
 
-    // scores
-    const pointsTop = (topTeam === "A") ? st.pointsA : st.pointsB;
-    const pointsBot = (botTeam === "A") ? st.pointsA : st.pointsB;
-    el("scoreA").textContent = pointsTop ?? 0;
-    el("scoreB").textContent = pointsBot ?? 0;
+    renderSets(el("setsA"),st.setsA,"A");
+    renderSets(el("setsB"),st.setsB,"B");
 
-    // sets
-    const setsTop = (topTeam === "A") ? st.setsA : st.setsB;
-    const setsBot = (botTeam === "A") ? st.setsA : st.setsB;
-    renderSets(el("setsA"), setsTop, topTeam, stBestOf);
-    renderSets(el("setsB"), setsBot, botTeam, stBestOf);
+    // SERVICE
+    if(!st.matchStarted || !st.server){
+      el("serveA").classList.remove("on");
+      el("serveB").classList.remove("on");
+    }else{
+      el("serveA").classList.toggle("on", st.server==="A");
+      el("serveB").classList.toggle("on", st.server==="B");
+    }
 
-    // service
-    const server = st.server; // "A" ou "B"
-    el("serveA").classList.toggle("on", server === topTeam);
-    el("serveB").classList.toggle("on", server === botTeam);
+    // TIMEOUT
+    el("timeoutBanner").style.display =
+            st.timeoutActive ? "block":"none";
 
-    // timeout used icône 🕒
-    const toUsedTop = (topTeam === "A") ? st.timeoutUsedA : st.timeoutUsedB;
-    const toUsedBot = (botTeam === "A") ? st.timeoutUsedA : st.timeoutUsedB;
-    el("toA").classList.toggle("on", !!toUsedTop);
-    el("toB").classList.toggle("on", !!toUsedBot);
+    // MATCH POINT
+    el("matchBanner").style.display =
+            st.matchPointFor ? "block":"none";
 
-    // bannières
-    showBanners(!!st.timeoutActive, st.matchPointFor);
-  };
-
-  socket.onerror = () => {
-    console.log("WebSocket error (overlay)");
+    // Timeout used icon
+    el("toA").classList.toggle("on",st.timeoutUsedA);
+    el("toB").classList.toggle("on",st.timeoutUsedB);
   };
 </script>
 

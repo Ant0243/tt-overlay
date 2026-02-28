@@ -3,11 +3,8 @@ const http = require("http");
 const WebSocket = require("ws");
 
 const app = express();
-
-// Dossier public
 app.use(express.static("public"));
 
-// Redirection racine
 app.get("/", (req, res) => {
     res.redirect("/overlay.html");
 });
@@ -16,16 +13,17 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 const port = process.env.PORT || 8787;
-
 server.listen(port, () => {
     console.log("🏓 Serveur TT Compétition lancé sur port", port);
 });
+
 /* =============================
    INITIAL STATE
 ============================= */
 
 function createInitialState() {
     return {
+
         mode: "singles",
 
         A1: "JOUEUR A",
@@ -40,8 +38,9 @@ function createInitialState() {
 
         bestOf: 5,
 
-        server: "A",               // serveur actuel
-        firstServerOfSet: "A",     // mémorise qui commence chaque set
+        server: null,
+        firstServerOfSet: null,
+        matchStarted: false,
 
         timeoutUsedA: false,
         timeoutUsedB: false,
@@ -58,16 +57,14 @@ let state = createInitialState();
 let undoStack = [];
 const UNDO_LIMIT = 200;
 
-/* =============================
-   UTILS
-============================= */
+/* ============================= */
 
 function snapshot() {
     return JSON.parse(JSON.stringify(state));
 }
 
-function pushUndo(reason) {
-    undoStack.push({ reason, s: snapshot() });
+function pushUndo() {
+    undoStack.push(snapshot());
     if (undoStack.length > UNDO_LIMIT) undoStack.shift();
 }
 
@@ -83,47 +80,21 @@ function broadcast() {
 }
 
 function switchServer() {
+    if (!state.server) return;
     state.server = state.server === "A" ? "B" : "A";
 }
 
 /* =============================
-   MATCH POINT LOGIC
+   START MATCH
 ============================= */
 
-function computeMatchPoint() {
-    state.matchPointFor = null;
-    if (state.finished) return;
+function startMatch(firstServer) {
+    if (state.matchStarted) return;
 
-    const target = neededSets();
-
-    const aLastSet = state.setsA === target - 1;
-    const bLastSet = state.setsB === target - 1;
-
-    if (aLastSet) {
-        const setAlreadyWon =
-            state.pointsA >= 11 &&
-            (state.pointsA - state.pointsB) >= 2;
-
-        if (!setAlreadyWon &&
-            state.pointsA >= 10 &&
-            state.pointsA > state.pointsB
-        ) {
-            state.matchPointFor = "A";
-            return;
-        }
-    }
-
-    if (bLastSet) {
-        const setAlreadyWon =
-            state.pointsB >= 11 &&
-            (state.pointsB - state.pointsA) >= 2;
-
-        if (!setAlreadyWon &&
-            state.pointsB >= 10 &&
-            state.pointsB > state.pointsA
-        ) {
-            state.matchPointFor = "B";
-        }
+    if (firstServer === "A" || firstServer === "B") {
+        state.matchStarted = true;
+        state.server = firstServer;
+        state.firstServerOfSet = firstServer;
     }
 }
 
@@ -132,14 +103,15 @@ function computeMatchPoint() {
 ============================= */
 
 function addPoint(team) {
+    if (!state.matchStarted) return;
     if (state.finished) return;
 
     if (team === "A") state.pointsA++;
     else state.pointsB++;
 
     state.pointHistory.push({
-        t: Date.now(),
-        type: team === "A" ? "POINT_A" : "POINT_B"
+        type: "POINT",
+        team
     });
 
     const total = state.pointsA + state.pointsB;
@@ -162,27 +134,20 @@ function checkSetWinner() {
         (state.pointsA >= 11 || state.pointsB >= 11) &&
         diff >= 2;
 
-    if (!setWon) {
-        computeMatchPoint();
-        return;
-    }
+    if (!setWon) return;
 
     if (state.pointsA > state.pointsB) state.setsA++;
     else state.setsB++;
 
     state.pointHistory.push({
-        t: Date.now(),
         type: "SET_END",
         score: { a: state.pointsA, b: state.pointsB }
     });
 
-    // reset points
     state.pointsA = 0;
     state.pointsB = 0;
     state.timeoutActive = false;
 
-    // REGLE OFFICIELLE :
-    // on inverse le premier serveur du set précédent
     state.firstServerOfSet =
         state.firstServerOfSet === "A" ? "B" : "A";
 
@@ -191,30 +156,25 @@ function checkSetWinner() {
     checkMatchWinner();
 }
 
-/* =============================
-   MATCH END
-============================= */
-
 function checkMatchWinner() {
     const target = neededSets();
     if (state.setsA === target || state.setsB === target) {
         state.finished = true;
+        state.matchStarted = false;
         state.timeoutActive = false;
-        state.matchPointFor = null;
+
         state.pointHistory.push({
-            t: Date.now(),
             type: "MATCH_END"
         });
     }
-
-    computeMatchPoint();
 }
 
 /* =============================
-   RESET
+   RESET MATCH
 ============================= */
 
 function resetMatchKeepSettings() {
+
     state.pointsA = 0;
     state.pointsB = 0;
     state.setsA = 0;
@@ -227,15 +187,11 @@ function resetMatchKeepSettings() {
     state.matchPointFor = null;
     state.finished = false;
 
-    state.firstServerOfSet = state.server;
+    state.server = null;
+    state.firstServerOfSet = null;
+    state.matchStarted = false;
 
-    // 🔥 RESET HISTORIQUE DES SETS
     state.pointHistory = [];
-
-    state.pointHistory.push({
-        t: Date.now(),
-        type: "RESET_MATCH"
-    });
 }
 
 function resetAll() {
@@ -248,6 +204,7 @@ function resetAll() {
 ============================= */
 
 wss.on("connection", ws => {
+
     ws.send(JSON.stringify(state));
 
     ws.on("message", msg => {
@@ -256,76 +213,56 @@ wss.on("connection", ws => {
         try { data = JSON.parse(msg); }
         catch { return; }
 
-        // UNDO
         if (data.type === "UNDO") {
             const last = undoStack.pop();
-            if (last) state = last.s;
-            computeMatchPoint();
-            broadcast();
-            return;
-        }
-
-        // RESET
-        if (data.type === "RESET_ALL") {
-            pushUndo("RESET_ALL");
-            resetAll();
+            if (last) state = last;
             broadcast();
             return;
         }
 
         if (data.type === "RESET_MATCH") {
-            pushUndo("RESET_MATCH");
+            pushUndo();
             resetMatchKeepSettings();
-            computeMatchPoint();
             broadcast();
             return;
         }
 
-        // SETTINGS
+        if (data.type === "RESET_ALL") {
+            pushUndo();
+            resetAll();
+            broadcast();
+            return;
+        }
+
+        if (data.type === "START_MATCH") {
+            pushUndo();
+            startMatch(data.firstServer);
+            broadcast();
+            return;
+        }
+
         if (data.type === "UPDATE_SETTINGS") {
-            pushUndo("UPDATE_SETTINGS");
 
-            // MODE
-            if (data.mode === "singles" || data.mode === "doubles") {
+            if (typeof data.A1 === "string") state.A1 = data.A1.trim();
+            if (typeof data.A2 === "string") state.A2 = data.A2.trim();
+            if (typeof data.B1 === "string") state.B1 = data.B1.trim();
+            if (typeof data.B2 === "string") state.B2 = data.B2.trim();
+
+            if (data.mode === "singles" || data.mode === "doubles")
                 state.mode = data.mode;
-            }
 
-            // NOMS
-            if (typeof data.A1 === "string")
-                state.A1 = data.A1.trim() || state.A1;
-
-            if (typeof data.A2 === "string")
-                state.A2 = data.A2.trim();
-
-            if (typeof data.B1 === "string")
-                state.B1 = data.B1.trim() || state.B1;
-
-            if (typeof data.B2 === "string")
-                state.B2 = data.B2.trim();
-
-            // BEST OF
-            if (data.bestOf === 3 || data.bestOf === 5)
+            if ((data.bestOf === 3 || data.bestOf === 5) && !state.matchStarted)
                 state.bestOf = data.bestOf;
 
-            // SERVEUR INITIAL
-            if (data.server === "A" || data.server === "B") {
-                state.server = data.server;
-                state.firstServerOfSet = data.server;
-            }
-
-            computeMatchPoint();
             broadcast();
             return;
         }
 
-        if (state.finished) return;
-
-        // GAME ACTIONS
         if (
-            ["POINT_A", "POINT_B",
-                "TIMEOUT_A", "TIMEOUT_B",
+            ["POINT_A","POINT_B",
+                "TIMEOUT_A","TIMEOUT_B",
                 "END_TIMEOUT"].includes(data.type)
-        ) pushUndo(data.type);
+        ) pushUndo();
 
         switch (data.type) {
 
@@ -338,14 +275,14 @@ wss.on("connection", ws => {
                 break;
 
             case "TIMEOUT_A":
-                if (!state.timeoutUsedA) {
+                if (!state.timeoutUsedA && state.matchStarted) {
                     state.timeoutUsedA = true;
                     state.timeoutActive = true;
                 }
                 break;
 
             case "TIMEOUT_B":
-                if (!state.timeoutUsedB) {
+                if (!state.timeoutUsedB && state.matchStarted) {
                     state.timeoutUsedB = true;
                     state.timeoutActive = true;
                 }
@@ -356,10 +293,6 @@ wss.on("connection", ws => {
                 break;
         }
 
-        computeMatchPoint();
         broadcast();
     });
 });
-
-console.log("🏓 Serveur TT Compétition lancé sur ws://localhost:8787");
-const AUTH_TOKEN = process.env.AUTH_TOKEN || "moncode123";

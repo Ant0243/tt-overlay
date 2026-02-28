@@ -76,8 +76,8 @@
     button{
       border:none;
       border-radius:16px;
-      font-size:22px;
-      padding:18px;
+      font-size:20px;
+      padding:16px;
       margin:6px 0;
       width:100%;
       font-weight:900;
@@ -87,13 +87,13 @@
 
     button:active{transform:scale(.95);}
 
-    .btnA{background:#0007f8;}
-    .btnB{background:#9b00c5;}
-    .timeout{background:#ff9800;}
-    .endTimeout{background:#ffc107;color:#111;}
-    .used{opacity:.4;pointer-events:none;}
-    .small{font-size:16px;padding:12px;}
-    .danger{background:#b00020;}
+    .startBtn{ background:#00c853; }
+    .btnA{ background: #0070ff; }
+    .btnB{ background:#9b00c5; }
+    .timeout{ background:#ff9800; }
+    .endTimeout{ background:#ffc107;color:#111; }
+    .small{ font-size:15px;padding:12px; }
+    .danger{ background:#b00020; }
 
     input,select{
       width:100%;
@@ -105,9 +105,12 @@
       color:white;
     }
 
-    .locked{
-      opacity:.35;
-      pointer-events:none;
+    .badge{
+      background:#2e7d32;
+      font-size:12px;
+      padding:4px 8px;
+      border-radius:8px;
+      margin-left:6px;
     }
   </style>
 </head>
@@ -135,8 +138,10 @@
       </div>
     </div>
 
-    <button class="btnA" id="btnA"></button>
-    <button class="btnB" id="btnB"></button>
+    <button class="startBtn" id="startBtn">Démarrer</button>
+
+    <button class="btnA" id="btnA" disabled></button>
+    <button class="btnB" id="btnB" disabled></button>
 
     <button class="timeout" id="toA">Temps mort A</button>
     <button class="timeout" id="toB">Temps mort B</button>
@@ -174,13 +179,7 @@
     <label>Format</label>
     <select id="bestOf">
       <option value="3">BO3</option>
-      <option value="5" selected>BO5</option>
-    </select>
-
-    <label>Premier serveur</label>
-    <select id="server">
-      <option value="A">A</option>
-      <option value="B">B</option>
+      <option value="5">BO5</option>
     </select>
 
     <button class="btnA" onclick="applySettings()">Appliquer</button>
@@ -198,13 +197,18 @@
   );
 
   const el=id=>document.getElementById(id);
+  let lastState=null;
 
-  function safeSend(type){
+  /* =====================
+     UTIL
+  ===================== */
+
+  function safeSend(type,data={}){
     if(socket.readyState!==1){
       alert("Connexion perdue");
       return;
     }
-    socket.send(JSON.stringify({type}));
+    socket.send(JSON.stringify({type,...data}));
   }
 
   function flash(team){
@@ -225,21 +229,53 @@
     }
   }
 
+  /* =====================
+     START MATCH
+  ===================== */
+
+  el("startBtn").onclick=()=>{
+
+    if(!lastState) return;
+
+    const nameA = teamName(lastState,"A");
+    const nameB = teamName(lastState,"B");
+
+    const choice = prompt(
+            "Qui sert en premier ?\n\n1 = "+nameA+
+            "\n2 = "+nameB
+    );
+
+    if(choice==="1"){
+      safeSend("START_MATCH",{firstServer:"A"});
+    }
+
+    if(choice==="2"){
+      safeSend("START_MATCH",{firstServer:"B"});
+    }
+  };
+
+  /* =====================
+     SETTINGS
+  ===================== */
+
   function applySettings(){
-    socket.send(JSON.stringify({
-      type:"UPDATE_SETTINGS",
+    safeSend("UPDATE_SETTINGS",{
       mode:el("mode").value,
       A1:el("A1").value,
       A2:el("A2").value,
       B1:el("B1").value,
       B2:el("B2").value,
-      bestOf:parseInt(el("bestOf").value),
-      server:el("server").value
-    }));
+      bestOf:parseInt(el("bestOf").value)
+    });
   }
+
+  /* =====================
+     SOCKET
+  ===================== */
 
   socket.onmessage=(e)=>{
     const st=JSON.parse(e.data);
+    lastState=st;
 
     const nameA=teamName(st,"A");
     const nameB=teamName(st,"B");
@@ -253,10 +289,15 @@
     el("btnA").textContent="+1 "+nameA;
     el("btnB").textContent="+1 "+nameB;
 
+    // Active +1 seulement si matchStarted
+    el("btnA").disabled=!st.matchStarted || st.timeoutActive;
+    el("btnB").disabled=!st.matchStarted || st.timeoutActive;
+
     el("btnA").onclick=()=>{
       safeSend("POINT_A");
       flash("A");
     };
+
     el("btnB").onclick=()=>{
       safeSend("POINT_B");
       flash("B");
@@ -266,29 +307,20 @@
     el("toB").onclick=()=>safeSend("TIMEOUT_B");
     el("endTimeout").onclick=()=>safeSend("END_TIMEOUT");
 
-    el("toA").classList.toggle("used",st.timeoutUsedA);
-    el("toB").classList.toggle("used",st.timeoutUsedB);
+    el("toA").disabled=st.timeoutUsedA || !st.matchStarted;
+    el("toB").disabled=st.timeoutUsedB || !st.matchStarted;
 
-    // Afficher bouton fin timeout
-    el("endTimeout").style.display = st.timeoutActive ? "block" : "none";
+    el("endTimeout").style.display=st.timeoutActive?"block":"none";
 
-    // Bloquer points pendant timeout
-    el("btnA").disabled = st.timeoutActive;
-    el("btnB").disabled = st.timeoutActive;
+    el("startBtn").style.display=st.matchStarted?"none":"block";
 
-    // Verrou paramètres si match commencé
-    if(st.pointsA>0 || st.pointsB>0){
-      el("settings").classList.add("locked");
-    }
-
-    // Sync paramètres
+    // sync settings
     el("mode").value=st.mode;
     el("A1").value=st.A1;
     el("A2").value=st.A2;
     el("B1").value=st.B1;
     el("B2").value=st.B2;
     el("bestOf").value=st.bestOf;
-    el("server").value=st.server;
   };
 
   function switchPage(page,e){
