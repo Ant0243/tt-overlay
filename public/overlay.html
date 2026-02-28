@@ -219,8 +219,11 @@
             st.timeoutActive ? "block":"none";
 
     // MATCH POINT
-    el("matchBanner").style.display =
-            st.matchPointFor ? "block":"none";
+    if(st.matchPointFor === "A" || st.matchPointFor === "B"){
+      el("matchBanner").style.display = "block";
+    }else{
+      el("matchBanner").style.display = "none";
+    }
 
     // Timeout used icon
     el("toA").classList.toggle("on",st.timeoutUsedA);
