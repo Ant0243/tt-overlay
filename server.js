@@ -1,298 +1,294 @@
 const express = require("express");
 const http = require("http");
-const WebSocket = require("ws");
+const path = require("path");
+const { Server } = require("socket.io");
 
 const app = express();
-app.use(express.static("public"));
-
-app.get("/", (req, res) => {
-    res.redirect("/overlay.html");
-});
-
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
-
-const port = process.env.PORT || 8787;
-server.listen(port, () => {
-    console.log("🏓 Serveur TT Compétition lancé sur port", port);
+const io = new Server(server, {
+    cors: { origin: "*" }
 });
 
-/* =============================
-   INITIAL STATE
-============================= */
+app.use(express.static(path.join(__dirname, "public")));
 
-function createInitialState() {
+const rooms = new Map();
+
+function freshState(room = "table1") {
     return {
-
-        mode: "singles",
-
-        A1: "JOUEUR A",
-        A2: "",
-        B1: "JOUEUR B",
-        B2: "",
-
-        pointsA: 0,
-        pointsB: 0,
-        setsA: 0,
-        setsB: 0,
-
-        bestOf: 5,
-
-        server: null,
-        firstServerOfSet: null,
-        matchStarted: false,
-
-        timeoutUsedA: false,
-        timeoutUsedB: false,
+        room,
+        players: { A: "Joueur A", B: "Joueur B" },
+        points: { A: 0, B: 0 },
+        sets: { A: 0, B: 0 },
+        bestOf: 5,              // best of 5 = 3 sets gagnants
+        firstServer: "A",       // serveur initial du set
+        server: "A",            // serveur courant
+        timeoutUsed: { A: false, B: false },
         timeoutActive: false,
-
-        matchPointFor: null,
-        finished: false,
-
-        pointHistory: []
+        timeoutBy: "",
+        currentSet: 1,
+        history: []
     };
 }
 
-let state = createInitialState();
-let undoStack = [];
-const UNDO_LIMIT = 200;
-
-/* ============================= */
-
-function snapshot() {
-    return JSON.parse(JSON.stringify(state));
-}
-
-function pushUndo() {
-    undoStack.push(snapshot());
-    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
-}
-
-function neededSets() {
-    return Math.ceil(state.bestOf / 2);
-}
-
-function broadcast() {
-    const data = JSON.stringify(state);
-    wss.clients.forEach(c => {
-        if (c.readyState === WebSocket.OPEN) c.send(data);
-    });
-}
-
-function switchServer() {
-    if (!state.server) return;
-    state.server = state.server === "A" ? "B" : "A";
-}
-
-/* =============================
-   START MATCH
-============================= */
-
-function startMatch(firstServer) {
-    if (state.matchStarted) return;
-
-    if (firstServer === "A" || firstServer === "B") {
-        state.matchStarted = true;
-        state.server = firstServer;
-        state.firstServerOfSet = firstServer;
+function getState(room) {
+    if (!rooms.has(room)) {
+        rooms.set(room, freshState(room));
     }
+    return rooms.get(room);
 }
 
-/* =============================
-   POINT MANAGEMENT
-============================= */
+function snapshot(st) {
+    return JSON.parse(JSON.stringify({
+        room: st.room,
+        players: st.players,
+        points: st.points,
+        sets: st.sets,
+        bestOf: st.bestOf,
+        firstServer: st.firstServer,
+        server: st.server,
+        timeoutUsed: st.timeoutUsed,
+        timeoutActive: st.timeoutActive,
+        timeoutBy: st.timeoutBy,
+        currentSet: st.currentSet
+    }));
+}
 
-function addPoint(team) {
-    if (!state.matchStarted) return;
-    if (state.finished) return;
+function pushHistory(st) {
+    st.history.push(snapshot(st));
+    if (st.history.length > 100) st.history.shift();
+}
 
-    if (team === "A") state.pointsA++;
-    else state.pointsB++;
+function neededToWin(bestOf) {
+    return Math.ceil((Number(bestOf) || 5) / 2);
+}
 
-    state.pointHistory.push({
-        type: "POINT",
-        team
-    });
+// Service ping : tous les 2 points, puis à 10-10 tous les 1 point
+function recomputeServer(st) {
+    const a = st.points.A || 0;
+    const b = st.points.B || 0;
+    const total = a + b;
+    const deuce = a >= 10 && b >= 10;
 
-    const total = state.pointsA + state.pointsB;
-    const deuce =
-        state.pointsA >= 10 && state.pointsB >= 10;
+    const base = st.firstServer === "B" ? "B" : "A";
+    const other = base === "A" ? "B" : "A";
 
-    if (deuce) {
-        switchServer();
+    let flips;
+    if (!deuce) {
+        flips = Math.floor(total / 2);
     } else {
-        if (total % 2 === 0) switchServer();
+        flips = total - 20;
     }
 
-    checkSetWinner();
+    st.server = (flips % 2 === 0) ? base : other;
 }
 
-function checkSetWinner() {
-    const diff = Math.abs(state.pointsA - state.pointsB);
+function gameWon(p, o) {
+    return p >= 11 && (p - o) >= 2;
+}
 
-    const setWon =
-        (state.pointsA >= 11 || state.pointsB >= 11) &&
-        diff >= 2;
+function resetPointsOnly(st) {
+    st.points = { A: 0, B: 0 };
+    st.timeoutActive = false;
+    st.timeoutBy = "";
+    recomputeServer(st);
+}
 
-    if (!setWon) return;
+function nextSet(st) {
+    st.currentSet += 1;
+    st.points = { A: 0, B: 0 };
+    st.timeoutActive = false;
+    st.timeoutBy = "";
+    st.firstServer = st.firstServer === "A" ? "B" : "A";
+    recomputeServer(st);
+}
 
-    if (state.pointsA > state.pointsB) state.setsA++;
-    else state.setsB++;
+function emitState(room) {
+    io.to(room).emit("state", getState(room));
+}
 
-    state.pointHistory.push({
-        type: "SET_END",
-        score: { a: state.pointsA, b: state.pointsB }
+// pratique pour voir l’état dans le navigateur
+app.get("/debug", (req, res) => {
+    const room = (req.query.room || "table1").toString();
+    res.json(getState(room));
+});
+
+io.on("connection", (socket) => {
+    socket.on("join", (room) => {
+        room = (room || "table1").toString();
+        socket.join(room);
+        emitState(room);
     });
 
-    state.pointsA = 0;
-    state.pointsB = 0;
-    state.timeoutActive = false;
+    socket.on("action", (msg) => {
+        const room = (msg?.room || "table1").toString();
+        const st = getState(room);
+        const type = msg?.type || "";
+        const payload = msg?.payload || {};
 
-    state.firstServerOfSet =
-        state.firstServerOfSet === "A" ? "B" : "A";
-
-    state.server = state.firstServerOfSet;
-
-    checkMatchWinner();
-}
-
-function checkMatchWinner() {
-    const target = neededSets();
-    if (state.setsA === target || state.setsB === target) {
-        state.finished = true;
-        state.matchStarted = false;
-        state.timeoutActive = false;
-
-        state.pointHistory.push({
-            type: "MATCH_END"
-        });
-    }
-}
-
-/* =============================
-   RESET MATCH
-============================= */
-
-function resetMatchKeepSettings() {
-
-    state.pointsA = 0;
-    state.pointsB = 0;
-    state.setsA = 0;
-    state.setsB = 0;
-
-    state.timeoutUsedA = false;
-    state.timeoutUsedB = false;
-    state.timeoutActive = false;
-
-    state.matchPointFor = null;
-    state.finished = false;
-
-    state.server = null;
-    state.firstServerOfSet = null;
-    state.matchStarted = false;
-
-    state.pointHistory = [];
-}
-
-function resetAll() {
-    state = createInitialState();
-    undoStack = [];
-}
-
-/* =============================
-   WEBSOCKET
-============================= */
-
-wss.on("connection", ws => {
-
-    ws.send(JSON.stringify(state));
-
-    ws.on("message", msg => {
-
-        let data;
-        try { data = JSON.parse(msg); }
-        catch { return; }
-
-        if (data.type === "UNDO") {
-            const last = undoStack.pop();
-            if (last) state = last;
-            broadcast();
+        // Undo
+        if (type === "UNDO") {
+            const prev = st.history.pop();
+            if (prev) {
+                const hist = st.history;
+                rooms.set(room, { ...prev, history: hist });
+            }
+            emitState(room);
             return;
         }
 
-        if (data.type === "RESET_MATCH") {
-            pushUndo();
-            resetMatchKeepSettings();
-            broadcast();
+        pushHistory(st);
+
+        // Réglages globaux
+        if (type === "APPLY_SETTINGS") {
+            if (payload.players) {
+                st.players.A = (payload.players.A || "Joueur A").toString().trim().slice(0, 24);
+                st.players.B = (payload.players.B || "Joueur B").toString().trim().slice(0, 24);
+            }
+            if (payload.bestOf) {
+                st.bestOf = Number(payload.bestOf) || 5;
+            }
+            if (payload.firstServer === "A" || payload.firstServer === "B") {
+                st.firstServer = payload.firstServer;
+            }
+            st.currentSet = 1;
+            st.sets = { A: 0, B: 0 };
+            st.timeoutUsed = { A: false, B: false };
+            resetPointsOnly(st);
+        }
+
+        // Noms
+        else if (type === "SET_NAMES") {
+            st.players.A = (msg.A || payload.A || "Joueur A").toString().trim().slice(0, 24);
+            st.players.B = (msg.B || payload.B || "Joueur B").toString().trim().slice(0, 24);
+        }
+
+        // 1er service
+        else if (type === "SET_SERVE") {
+            const serve = (msg.serve || payload.serve) === "B" ? "B" : "A";
+            st.firstServer = serve;
+            resetPointsOnly(st);
+        }
+
+        // Reset points
+        else if (type === "RESET_POINTS" || type === "RESET_SCORE") {
+            resetPointsOnly(st);
+        }
+
+        // Reset match
+        else if (type === "RESET_MATCH") {
+            rooms.set(room, freshState(room));
+            emitState(room);
             return;
         }
 
-        if (data.type === "RESET_ALL") {
-            pushUndo();
-            resetAll();
-            broadcast();
-            return;
+        // Temps mort ON direct
+        else if (type === "TIMEOUT_START") {
+            const by = (msg.by || payload.by) === "B" ? "B" : "A";
+            if (!st.timeoutUsed[by]) {
+                st.timeoutUsed[by] = true;
+                st.timeoutActive = true;
+                st.timeoutBy = by;
+            } else {
+                st.history.pop();
+            }
         }
 
-        if (data.type === "START_MATCH") {
-            pushUndo();
-            startMatch(data.firstServer);
-            broadcast();
-            return;
+        // Fin temps mort
+        else if (type === "TIMEOUT_END") {
+            st.timeoutActive = false;
+            st.timeoutBy = "";
         }
 
-        if (data.type === "UPDATE_SETTINGS") {
-
-            if (typeof data.A1 === "string") state.A1 = data.A1.trim();
-            if (typeof data.A2 === "string") state.A2 = data.A2.trim();
-            if (typeof data.B1 === "string") state.B1 = data.B1.trim();
-            if (typeof data.B2 === "string") state.B2 = data.B2.trim();
-
-            if (data.mode === "singles" || data.mode === "doubles")
-                state.mode = data.mode;
-
-            if ((data.bestOf === 3 || data.bestOf === 5) && !state.matchStarted)
-                state.bestOf = data.bestOf;
-
-            broadcast();
-            return;
+        // Ancien format : TAKE_TO_A / TAKE_TO_B
+        else if (type === "TAKE_TO_A") {
+            if (!st.timeoutUsed.A) {
+                st.timeoutUsed.A = true;
+                st.timeoutActive = true;
+                st.timeoutBy = "A";
+            } else {
+                st.history.pop();
+            }
         }
 
-        if (
-            ["POINT_A","POINT_B",
-                "TIMEOUT_A","TIMEOUT_B",
-                "END_TIMEOUT"].includes(data.type)
-        ) pushUndo();
+        else if (type === "TAKE_TO_B") {
+            if (!st.timeoutUsed.B) {
+                st.timeoutUsed.B = true;
+                st.timeoutActive = true;
+                st.timeoutBy = "B";
+            } else {
+                st.history.pop();
+            }
+        }
 
-        switch (data.type) {
+        // Toggle timeout
+        else if (type === "TOGGLE_TIMEOUT") {
+            const who = (payload.who || msg.by || "A") === "B" ? "B" : "A";
 
-            case "POINT_A":
-                addPoint("A");
-                break;
-
-            case "POINT_B":
-                addPoint("B");
-                break;
-
-            case "TIMEOUT_A":
-                if (!state.timeoutUsedA && state.matchStarted) {
-                    state.timeoutUsedA = true;
-                    state.timeoutActive = true;
+            if (st.timeoutActive) {
+                if (st.timeoutBy === who) {
+                    st.timeoutActive = false;
+                    st.timeoutBy = "";
+                } else {
+                    st.history.pop();
                 }
-                break;
-
-            case "TIMEOUT_B":
-                if (!state.timeoutUsedB && state.matchStarted) {
-                    state.timeoutUsedB = true;
-                    state.timeoutActive = true;
+            } else {
+                if (!st.timeoutUsed[who]) {
+                    st.timeoutUsed[who] = true;
+                    st.timeoutActive = true;
+                    st.timeoutBy = who;
+                } else {
+                    st.history.pop();
                 }
-                break;
-
-            case "END_TIMEOUT":
-                state.timeoutActive = false;
-                break;
+            }
         }
 
-        broadcast();
+        // Points : ancien format POINT_A / POINT_B
+        else if (type === "POINT_A" || type === "POINT_B") {
+            const who = type === "POINT_B" ? "B" : "A";
+            const other = who === "A" ? "B" : "A";
+
+            st.points[who] += 1;
+            recomputeServer(st);
+
+            if (gameWon(st.points[who], st.points[other])) {
+                st.sets[who] += 1;
+
+                const winNeed = neededToWin(st.bestOf);
+                if (st.sets[who] < winNeed) {
+                    nextSet(st);
+                } else {
+                    // match fini : on repart quand même à 0-0 visuellement pour le set suivant si tu veux
+                    // ici je laisse le dernier set validé visible 1 instant puis reset du set
+                    nextSet(st);
+                }
+            }
+        }
+
+        // Points : nouveau format POINT + payload.who
+        else if (type === "POINT") {
+            const who = (payload.who === "B") ? "B" : "A";
+            const other = who === "A" ? "B" : "A";
+
+            st.points[who] += 1;
+            recomputeServer(st);
+
+            if (gameWon(st.points[who], st.points[other])) {
+                st.sets[who] += 1;
+
+                const winNeed = neededToWin(st.bestOf);
+                if (st.sets[who] < winNeed) {
+                    nextSet(st);
+                } else {
+                    nextSet(st);
+                }
+            }
+        }
+
+        emitState(room);
     });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, "0.0.0.0", () => {
+    console.log("Running on port " + PORT);
 });
