@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>TT SCOREBOARD</title>
+
+    <style>
+        html, body {
+            margin: 0;
+            height: 100%;
+            background: #0b0f16;
+            color: white;
+            font-family: -apple-system, system-ui, Segoe UI, Roboto, sans-serif;
+            overflow: hidden;
+        }
+
+        .status {
+            position: fixed;
+            top: 16px;
+            right: 20px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .wrapper {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .top-banners {
+            position: fixed;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .banner {
+            display: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 34px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            background: rgba(0,0,0,0.7);
+        }
+
+        .banner.timeout { border: 2px solid #FFC107; }
+        .banner.match { border: 2px solid #FF1744; }
+
+        .players {
+            width: 92%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+
+        .player {
+            background: rgba(255,255,255,0.04);
+            border-radius: 24px;
+            padding: 30px;
+            text-align: center;
+            box-sizing: border-box;
+            min-height: 420px;
+        }
+
+        .player.a {
+            box-shadow: inset 10px 0 0 #0070ff;
+        }
+
+        .player.b {
+            box-shadow: inset 10px 0 0 #f80000;
+        }
+
+        .name {
+            font-size: 54px;
+            font-weight: 900;
+            line-height: 1.05;
+            margin-bottom: 18px;
+            word-break: break-word;
+        }
+
+        .service {
+            font-size: 28px;
+            font-weight: 800;
+            opacity: 0;
+            min-height: 40px;
+            transition: opacity 0.2s ease;
+            margin-bottom: 8px;
+        }
+
+        .service.on {
+            opacity: 1;
+        }
+
+        .score {
+            font-size: 170px;
+            font-weight: 1000;
+            line-height: 1;
+            margin: 12px 0 24px;
+        }
+
+        .sets {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            min-height: 28px;
+        }
+
+        .set {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.14);
+        }
+
+        .set.a {
+            background: #0070ff;
+        }
+
+        .set.b {
+            background: #f80000;
+        }
+    </style>
+</head>
+<body>
+
+<div class="status" id="status">Connexion…</div>
+
+<div class="top-banners">
+    <div class="banner timeout" id="timeoutBanner">TEMPS MORT</div>
+    <div class="banner match" id="matchBanner">BALLE DE MATCH</div>
+</div>
+
+<div class="wrapper">
+    <div class="players">
+        <div class="player a">
+            <div class="name" id="nameA">JOUEUR A</div>
+            <div class="service" id="serveA">SERVICE</div>
+            <div class="score" id="scoreA">0</div>
+            <div class="sets" id="setsA"></div>
+        </div>
+
+        <div class="player b">
+            <div class="name" id="nameB">JOUEUR B</div>
+            <div class="service" id="serveB">SERVICE</div>
+            <div class="score" id="scoreB">0</div>
+            <div class="sets" id="setsB"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const socket = new WebSocket(
+        (location.protocol === "https:" ? "wss://" : "ws://") +
+        location.host +
+        "?token=moncode123"
+    );
+
+    const el = (id) => document.getElementById(id);
+    let bestOf = 5;
+
+    function teamName(st, team) {
+        if (team === "A") {
+            return st.mode === "doubles" && st.A2
+                ? `${st.A1} / ${st.A2}`
+                : st.A1;
+        } else {
+            return st.mode === "doubles" && st.B2
+                ? `${st.B1} / ${st.B2}`
+                : st.B1;
+        }
+    }
+
+    function renderSets(container, count, team) {
+        container.innerHTML = "";
+        const needed = Math.ceil(bestOf / 2);
+
+        for (let i = 0; i < needed; i++) {
+            const d = document.createElement("div");
+            d.className = "set";
+            if (i < count) {
+                d.classList.add(team === "A" ? "a" : "b");
+            }
+            container.appendChild(d);
+        }
+    }
+
+    socket.onopen = () => {
+        el("status").textContent = "Connecté ✅";
+    };
+
+    socket.onerror = () => {
+        el("status").textContent = "Erreur WebSocket ❌";
+    };
+
+    socket.onclose = () => {
+        el("status").textContent = "Connexion perdue ⚠️";
+    };
+
+    socket.onmessage = (event) => {
+        const st = JSON.parse(event.data);
+
+        bestOf = st.bestOf || 5;
+
+        // NOMS
+        el("nameA").textContent = teamName(st, "A") || "JOUEUR A";
+        el("nameB").textContent = teamName(st, "B") || "JOUEUR B";
+
+        // SCORES
+        el("scoreA").textContent = st.pointsA ?? 0;
+        el("scoreB").textContent = st.pointsB ?? 0;
+
+        // SETS
+        renderSets(el("setsA"), st.setsA ?? 0, "A");
+        renderSets(el("setsB"), st.setsB ?? 0, "B");
+
+        // SERVICE
+        if (!st.matchStarted || !st.server) {
+            el("serveA").classList.remove("on");
+            el("serveB").classList.remove("on");
+        } else {
+            el("serveA").classList.toggle("on", st.server === "A");
+            el("serveB").classList.toggle("on", st.server === "B");
+        }
+
+        // BANNIÈRES
+        el("timeoutBanner").style.display = st.timeoutActive ? "block" : "none";
+        el("matchBanner").style.display =
+            (st.matchPointFor === "A" || st.matchPointFor === "B") ? "block" : "none";
+    };
+</script>
+</body>
+</html>
