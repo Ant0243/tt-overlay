@@ -1,77 +1,124 @@
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
     <meta charset="UTF-8">
-    <title>Scoreboard</title>
-
-    <script src="/socket.io/socket.io.js"></script>
+    <title>TT SCOREBOARD</title>
 
     <style>
 
-        body{
-            background:#111;
+        html,body{
+            margin:0;
+            height:100%;
+            background:#0b0f16;
             color:white;
-            font-family:Arial;
+            font-family:-apple-system,system-ui;
             display:flex;
+            flex-direction:column;
             justify-content:center;
             align-items:center;
-            height:100vh;
-            margin:0;
         }
 
-        .container{
-            width:90%;
-            max-width:1000px;
-            text-align:center;
-        }
+        /* joueurs */
 
         .players{
             display:flex;
+            width:90%;
             justify-content:space-between;
-            font-size:40px;
-            margin-bottom:30px;
+            margin-bottom:40px;
         }
 
-        .score{
+        .player{
+            flex:1;
+            text-align:center;
+        }
+
+        .name{
+            font-size:60px;
+            font-weight:800;
+            margin-bottom:20px;
+        }
+
+        .points{
+            font-size:140px;
+            font-weight:900;
+        }
+
+        /* sets */
+
+        .sets{
             display:flex;
-            justify-content:space-between;
-            font-size:150px;
-            font-weight:bold;
+            justify-content:center;
+            gap:20px;
+            margin-top:40px;
         }
 
-        .server{
-            margin-top:30px;
-            font-size:30px;
+        .set{
+            width:30px;
+            height:30px;
+            border-radius:6px;
+            background:#444;
         }
+
+        .setA{ background:#0070ff; }
+        .setB{ background:#f80000; }
+
+        /* service */
+
+        .service{
+            margin-top:10px;
+            font-size:30px;
+            opacity:.3;
+        }
+
+        .service.on{
+            opacity:1;
+            transform:scale(1.2);
+        }
+
+        /* banners */
+
+        .banner{
+            position:fixed;
+            top:40px;
+            font-size:60px;
+            font-weight:900;
+            display:none;
+        }
+
+        .timeout{ color:#ffc107 }
+        .match{ color:#ff1744 }
 
     </style>
-
 </head>
 
 <body>
 
-<div class="container">
+<div class="banner timeout" id="timeoutBanner">TEMPS MORT</div>
+<div class="banner match" id="matchBanner">BALLE DE MATCH</div>
 
-    <div class="players">
+<div class="players">
 
-        <div id="playerA">Joueur A</div>
+    <div class="player">
 
-        <div id="playerB">Joueur B</div>
+        <div class="name" id="nameA">JOUEUR A</div>
+
+        <div class="service" id="serveA">SERVE</div>
+
+        <div class="points" id="scoreA">0</div>
+
+        <div class="sets" id="setsA"></div>
 
     </div>
 
-    <div class="score">
+    <div class="player">
 
-        <div id="scoreA">0</div>
+        <div class="name" id="nameB">JOUEUR B</div>
 
-        <div id="scoreB">0</div>
+        <div class="service" id="serveB">SERVE</div>
 
-    </div>
+        <div class="points" id="scoreB">0</div>
 
-    <div class="server">
-
-        Service : <span id="server">A</span>
+        <div class="sets" id="setsB"></div>
 
     </div>
 
@@ -79,28 +126,91 @@
 
 <script>
 
-    const room =
-        new URLSearchParams(location.search).get("room") || "table1"
+    const socket = new WebSocket(
+        (location.protocol === "https:" ? "wss://" : "ws://")
+        + location.host + "?token=moncode123"
+    );
 
-    const socket = io()
+    const el = id => document.getElementById(id);
 
-    socket.on("connect", () => {
+    let bestOf = 5;
 
-        socket.emit("join", room)
+    function teamName(st,team){
 
-    })
+        if(team==="A"){
+            return st.mode==="doubles" && st.A2
+                ? st.A1+" / "+st.A2
+                : st.A1;
+        }else{
+            return st.mode==="doubles" && st.B2
+                ? st.B1+" / "+st.B2
+                : st.B1;
+        }
 
-    socket.on("state",(st)=>{
+    }
 
-        document.getElementById("playerA").innerText = st.players.A
-        document.getElementById("playerB").innerText = st.players.B
+    function renderSets(container,count,team){
 
-        document.getElementById("scoreA").innerText = st.points.A
-        document.getElementById("scoreB").innerText = st.points.B
+        container.innerHTML="";
 
-        document.getElementById("server").innerText = st.serve
+        const needed = Math.ceil(bestOf/2);
 
-    })
+        for(let i=0;i<needed;i++){
+
+            const d=document.createElement("div");
+
+            d.className="set";
+
+            if(i<count){
+                d.classList.add(team==="A"?"setA":"setB");
+            }
+
+            container.appendChild(d);
+
+        }
+
+    }
+
+    socket.onmessage = (event)=>{
+
+        const st = JSON.parse(event.data);
+
+        bestOf = st.bestOf || 5;
+
+        el("nameA").textContent = teamName(st,"A");
+        el("nameB").textContent = teamName(st,"B");
+
+        el("scoreA").textContent = st.pointsA;
+        el("scoreB").textContent = st.pointsB;
+
+        renderSets(el("setsA"),st.setsA,"A");
+        renderSets(el("setsB"),st.setsB,"B");
+
+        /* service */
+
+        if(!st.matchStarted || !st.server){
+
+            el("serveA").classList.remove("on");
+            el("serveB").classList.remove("on");
+
+        }else{
+
+            el("serveA").classList.toggle("on", st.server==="A");
+            el("serveB").classList.toggle("on", st.server==="B");
+
+        }
+
+        /* banners */
+
+        el("timeoutBanner").style.display =
+            st.timeoutActive ? "block":"none";
+
+        el("matchBanner").style.display =
+            (st.matchPointFor==="A" || st.matchPointFor==="B")
+                ? "block"
+                : "none";
+
+    };
 
 </script>
 
