@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+
+    <meta charset="UTF-8">
+    <title>TT Scoreboard</title>
+
+    <style>
+
+        body{
+            background:#111;
+            color:white;
+            font-family:Arial;
+            margin:0;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+        }
+
+        .container{
+            width:90%;
+            text-align:center;
+        }
+
+        .players{
+            display:flex;
+            justify-content:space-between;
+            font-size:50px;
+            margin-bottom:30px;
+        }
+
+        .score{
+            display:flex;
+            justify-content:space-between;
+            font-size:160px;
+            font-weight:bold;
+        }
+
+        .sets{
+            display:flex;
+            justify-content:space-between;
+            margin-top:20px;
+            font-size:40px;
+        }
+
+        .server{
+            margin-top:25px;
+            font-size:40px;
+            opacity:0.9;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="players">
+        <div id="playerA">Joueur A</div>
+        <div id="playerB">Joueur B</div>
+    </div>
+
+    <div class="score">
+        <div id="scoreA">0</div>
+        <div id="scoreB">0</div>
+    </div>
+
+    <div class="sets">
+        <div>Sets : <span id="setsA">0</span></div>
+        <div>Sets : <span id="setsB">0</span></div>
+    </div>
+
+    <div class="server">
+        Service : <span id="server">A</span>
+    </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+
+    const socket = io()
+
+    let players = {A:"Joueur A", B:"Joueur B"}
+
+    let scoreA = 0
+    let scoreB = 0
+
+    let setsA = 0
+    let setsB = 0
+
+    let server = "A"
+    let firstServer = "A"
+
+    let serveCount = 0
+    let setNumber = 1
+
+    let sideSwapped = false
+
+
+    function updateDisplay(){
+
+        document.getElementById("playerA").innerText = players.A
+        document.getElementById("playerB").innerText = players.B
+
+        document.getElementById("scoreA").innerText = scoreA
+        document.getElementById("scoreB").innerText = scoreB
+
+        document.getElementById("setsA").innerText = setsA
+        document.getElementById("setsB").innerText = setsB
+
+        document.getElementById("server").innerText = server
+
+    }
+
+
+    function changeServer(){
+
+        server = server === "A" ? "B" : "A"
+
+    }
+
+
+    function addPoint(player){
+
+        if(player === "A") scoreA++
+        if(player === "B") scoreB++
+
+        serveCount++
+
+        if(scoreA >= 10 && scoreB >= 10){
+            changeServer()
+        }else{
+            if(serveCount % 2 === 0){
+                changeServer()
+            }
+        }
+
+        checkSideChange()
+
+        checkSet()
+
+        updateDisplay()
+
+    }
+
+
+    function checkSideChange(){
+
+        if(setNumber === 5 && !sideSwapped){
+
+            if(scoreA === 5 || scoreB === 5){
+
+                swapSides()
+
+                sideSwapped = true
+
+            }
+
+        }
+
+    }
+
+
+    function swapSides(){
+
+        let temp = players.A
+        players.A = players.B
+        players.B = temp
+
+    }
+
+
+    function checkSet(){
+
+        if(scoreA >= 11 && scoreA - scoreB >= 2){
+
+            setsA++
+            newSet()
+
+        }
+
+        if(scoreB >= 11 && scoreB - scoreA >= 2){
+
+            setsB++
+            newSet()
+
+        }
+
+    }
+
+
+    function newSet(){
+
+        scoreA = 0
+        scoreB = 0
+
+        serveCount = 0
+
+        setNumber++
+
+        sideSwapped = false
+
+        swapSides()
+
+        firstServer = firstServer === "A" ? "B" : "A"
+        server = firstServer
+
+    }
+
+
+    socket.on("state",(st)=>{
+
+        players = st.players
+
+        scoreA = st.points.A
+        scoreB = st.points.B
+
+        setsA = st.sets.A
+        setsB = st.sets.B
+
+        server = st.serve
+
+        updateDisplay()
+
+    })
+
+
+    updateDisplay()
+
+</script>
+
+</body>
+</html>
