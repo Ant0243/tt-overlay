@@ -2,87 +2,47 @@
 <html lang="fr">
 
 <head>
-
     <meta charset="UTF-8">
-    <title>Table Tennis Scoreboard</title>
+    <title>Scoreboard</title>
 
     <script src="/socket.io/socket.io.js"></script>
 
     <style>
 
         body{
-            background:#0f0f10;
+            background:#111;
             color:white;
-            font-family:system-ui,-apple-system,Segoe UI,Roboto;
-            margin:0;
-            height:100vh;
+            font-family:Arial;
             display:flex;
             justify-content:center;
             align-items:center;
+            height:100vh;
+            margin:0;
         }
 
         .container{
             width:90%;
-            max-width:1200px;
+            max-width:1000px;
             text-align:center;
         }
 
         .players{
             display:flex;
             justify-content:space-between;
-            margin-bottom:40px;
-            font-size:42px;
-            font-weight:600;
+            font-size:40px;
+            margin-bottom:30px;
         }
 
         .score{
             display:flex;
             justify-content:space-between;
-            font-size:180px;
-            font-weight:800;
-            letter-spacing:2px;
-        }
-
-        .sets{
-            display:flex;
-            justify-content:space-between;
-            margin-top:40px;
-            font-size:28px;
-        }
-
-        .setBar{
-            display:flex;
-            gap:8px;
-        }
-
-        .set{
-            width:18px;
-            height:18px;
-            border-radius:4px;
-            background:#333;
-        }
-
-        .setA{
-            background:#2F7DFF;
-        }
-
-        .setB{
-            background:#FF3B6B;
+            font-size:150px;
+            font-weight:bold;
         }
 
         .server{
-            margin-top:40px;
-            font-size:36px;
-            opacity:0.85;
-        }
-
-        .serveDot{
-            display:inline-block;
-            width:12px;
-            height:12px;
-            border-radius:50%;
-            background:white;
-            margin-left:10px;
+            margin-top:30px;
+            font-size:30px;
         }
 
     </style>
@@ -109,18 +69,9 @@
 
     </div>
 
-    <div class="sets">
-
-        <div class="setBar" id="setsA"></div>
-
-        <div class="setBar" id="setsB"></div>
-
-    </div>
-
     <div class="server">
 
         Service : <span id="server">A</span>
-        <span class="serveDot"></span>
 
     </div>
 
@@ -128,49 +79,30 @@
 
 <script>
 
+    const room =
+        new URLSearchParams(location.search).get("room") || "table1"
+
     const socket = io()
 
-    const el = id => document.getElementById(id)
+    socket.on("connect", () => {
 
-    function renderSets(container,count,who){
+        socket.emit("join", room)
 
-        container.innerHTML=""
-
-        for(let i=0;i<3;i++){
-
-            const d=document.createElement("div")
-
-            d.className="set"
-
-            if(i<count){
-
-                d.classList.add(who==="A"?"setA":"setB")
-
-            }
-
-            container.appendChild(d)
-
-        }
-
-    }
+    })
 
     socket.on("state",(st)=>{
 
-        el("playerA").innerText=st.players.A
-        el("playerB").innerText=st.players.B
+        document.getElementById("playerA").innerText = st.players.A
+        document.getElementById("playerB").innerText = st.players.B
 
-        el("scoreA").innerText=st.points.A
-        el("scoreB").innerText=st.points.B
+        document.getElementById("scoreA").innerText = st.points.A
+        document.getElementById("scoreB").innerText = st.points.B
 
-        renderSets(el("setsA"),st.sets.A,"A")
-        renderSets(el("setsB"),st.sets.B,"B")
-
-        el("server").innerText=st.serve
+        document.getElementById("server").innerText = st.serve
 
     })
 
 </script>
 
 </body>
-
 </html>
