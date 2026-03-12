@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Club Screen</title>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <style>
+
+        body{
+            margin:0;
+            background:black;
+            color:white;
+            font-family:system-ui;
+        }
+
+        .left{
+            position:absolute;
+            top:40px;
+            left:40px;
+            text-align:left;
+        }
+
+        .right{
+            position:absolute;
+            top:40px;
+            right:40px;
+            text-align:right;
+        }
+
+        .name{
+            font-size:36px;
+            margin-bottom:10px;
+        }
+
+        .score{
+            font-size:120px;
+            font-weight:900;
+        }
+
+        .sets{
+            font-size:26px;
+            opacity:0.9;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="left">
+
+    <div class="name" id="playerA">Joueur A</div>
+
+    <div class="score" id="scoreA">0</div>
+
+    <div class="sets">Sets : <span id="setsA">0</span></div>
+
+</div>
+
+<div class="right">
+
+    <div class="name" id="playerB">Joueur B</div>
+
+    <div class="score" id="scoreB">0</div>
+
+    <div class="sets">Sets : <span id="setsB">0</span></div>
+
+</div>
+
+<script>
+
+    const room = new URLSearchParams(location.search).get("room") || "table1"
+    const socket = io()
+
+    socket.on("connect",()=> socket.emit("join",room))
+
+    socket.on("state",(st)=>{
+
+        document.getElementById("playerA").innerText = st.players.A
+        document.getElementById("playerB").innerText = st.players.B
+
+        document.getElementById("scoreA").innerText = st.points.A
+        document.getElementById("scoreB").innerText = st.points.B
+
+        document.getElementById("setsA").innerText = st.sets.A
+        document.getElementById("setsB").innerText = st.sets.B
+
+    })
+
+</script>
+
+</body>
+</html>

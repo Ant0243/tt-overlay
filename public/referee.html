@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Referee Screen</title>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <style>
+
+        body{
+            background:#0f0f10;
+            color:white;
+            font-family:system-ui;
+            margin:0;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+        }
+
+        .container{
+            text-align:center;
+            width:600px;
+        }
+
+        .players{
+            display:flex;
+            justify-content:space-between;
+            font-size:36px;
+            margin-bottom:20px;
+        }
+
+        .score{
+            display:flex;
+            justify-content:space-between;
+            font-size:120px;
+            font-weight:900;
+        }
+
+        .sets{
+            display:flex;
+            justify-content:space-between;
+            margin-top:15px;
+            font-size:28px;
+        }
+
+        .server{
+            margin-top:20px;
+            font-size:28px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="players">
+        <div id="playerA">Joueur A</div>
+        <div id="playerB">Joueur B</div>
+    </div>
+
+    <div class="score">
+        <div id="scoreA">0</div>
+        <div id="scoreB">0</div>
+    </div>
+
+    <div class="sets">
+        <div>Sets : <span id="setsA">0</span></div>
+        <div>Sets : <span id="setsB">0</span></div>
+    </div>
+
+    <div class="server">
+        Service : <span id="server">A</span>
+    </div>
+
+</div>
+
+<script>
+
+    const room = new URLSearchParams(location.search).get("room") || "table1"
+    const socket = io()
+
+    socket.on("connect",()=> socket.emit("join",room))
+
+    socket.on("state",(st)=>{
+
+        document.getElementById("playerA").innerText = st.players.A
+        document.getElementById("playerB").innerText = st.players.B
+
+        document.getElementById("scoreA").innerText = st.points.A
+        document.getElementById("scoreB").innerText = st.points.B
+
+        document.getElementById("setsA").innerText = st.sets.A
+        document.getElementById("setsB").innerText = st.sets.B
+
+        document.getElementById("server").innerText = st.serve
+
+    })
+
+</script>
+
+</body>
+</html>
