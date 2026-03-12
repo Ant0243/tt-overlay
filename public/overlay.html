@@ -156,79 +156,92 @@
 
   </div>
 </div>
+<script src="/socket.io/socket.io.js"></script>
 
 <script>
-  const socket = new WebSocket(
-          (location.protocol === "https:" ? "wss://" : "ws://")
-          + location.host + "?token=moncode123"
-  );
 
-  const el = id => document.getElementById(id);
-  let bestOf = 5;
+  const room =
+          new URLSearchParams(location.search).get("room") || "table1"
 
-  function teamName(st, team){
-    if(team==="A"){
-      return st.mode==="doubles" && st.A2
-              ? st.A1+" / "+st.A2
-              : st.A1;
-    }else{
-      return st.mode==="doubles" && st.B2
-              ? st.B1+" / "+st.B2
-              : st.B1;
-    }
-  }
+  const socket = io()
+
+  const el = id => document.getElementById(id)
+
+  let bestOf = 5
 
   function renderSets(container,count,team){
-    container.innerHTML="";
-    const needed = Math.ceil(bestOf/2);
+
+    container.innerHTML=""
+
+    const needed = Math.ceil(bestOf/2)
+
     for(let i=0;i<needed;i++){
-      const d=document.createElement("div");
-      d.className="set";
+
+      const d=document.createElement("div")
+
+      d.className="set"
+
       if(i<count){
-        d.classList.add(team==="A"?"a":"b");
+        d.classList.add(team==="A"?"a":"b")
       }
-      container.appendChild(d);
+
+      container.appendChild(d)
+
     }
+
   }
 
-  socket.onmessage = (event)=>{
-    const st = JSON.parse(event.data);
+  function matchPoint(st){
 
-    bestOf = st.bestOf || 5;
+    const need = Math.ceil(bestOf/2)
 
-    el("nameA").textContent = teamName(st,"A");
-    el("nameB").textContent = teamName(st,"B");
+    const a = st.points.A
+    const b = st.points.B
 
-    el("scoreA").textContent = st.pointsA;
-    el("scoreB").textContent = st.pointsB;
+    if(st.sets.A === need-1 && a>=10 && a-b>=1) return true
+    if(st.sets.B === need-1 && b>=10 && b-a>=1) return true
 
-    renderSets(el("setsA"),st.setsA,"A");
-    renderSets(el("setsB"),st.setsB,"B");
+    return false
 
-    // SERVICE
-    if(!st.matchStarted || !st.server){
-      el("serveA").classList.remove("on");
-      el("serveB").classList.remove("on");
-    }else{
-      el("serveA").classList.toggle("on", st.server==="A");
-      el("serveB").classList.toggle("on", st.server==="B");
-    }
+  }
 
-    // TIMEOUT
+  socket.on("connect",()=>{
+
+    socket.emit("join",room)
+
+  })
+
+  socket.on("state",(st)=>{
+
+    bestOf = st.bestOf || 5
+
+    el("nameA").textContent = st.players.A
+    el("nameB").textContent = st.players.B
+
+    el("scoreA").textContent = st.points.A
+    el("scoreB").textContent = st.points.B
+
+    renderSets(el("setsA"),st.sets.A,"A")
+    renderSets(el("setsB"),st.sets.B,"B")
+
+// SERVICE
+    el("serveA").classList.toggle("on", st.server==="A")
+    el("serveB").classList.toggle("on", st.server==="B")
+
+// TIMEOUT
     el("timeoutBanner").style.display =
-            st.timeoutActive ? "block":"none";
+            st.timeoutActive ? "block":"none"
 
-    // MATCH POINT
-    if(st.matchPointFor === "A" || st.matchPointFor === "B"){
-      el("matchBanner").style.display = "block";
-    }else{
-      el("matchBanner").style.display = "none";
-    }
+// MATCH POINT
+    el("matchBanner").style.display =
+            matchPoint(st) ? "block":"none"
 
-    // Timeout used icon
-    el("toA").classList.toggle("on",st.timeoutUsedA);
-    el("toB").classList.toggle("on",st.timeoutUsedB);
-  };
+// TIMEOUT USED
+    el("toA").classList.toggle("on",st.timeoutUsed.A)
+    el("toB").classList.toggle("on",st.timeoutUsed.B)
+
+  })
+
 </script>
 
 </body>

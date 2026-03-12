@@ -187,148 +187,174 @@
   </div>
 
 </div>
+<script src="/socket.io/socket.io.js"></script>
 
 <script>
-  const TOKEN="moncode123";
 
-  const socket=new WebSocket(
-          (location.protocol==="https:"?"wss://":"ws://")
-          +location.host+"?token="+TOKEN
-  );
+  const room =
+          new URLSearchParams(location.search).get("room") || "table1"
 
-  const el=id=>document.getElementById(id);
-  let lastState=null;
+  const socket = io()
+
+  const el = id => document.getElementById(id)
+
+  let lastState = null
 
   /* =====================
      UTIL
   ===================== */
 
   function safeSend(type,data={}){
-    if(socket.readyState!==1){
-      alert("Connexion perdue");
-      return;
-    }
-    socket.send(JSON.stringify({type,...data}));
+
+    socket.emit("action",{
+      room,
+      type,
+      ...data
+    })
+
   }
 
   function flash(team){
-    const card = team==="A"?el("cardA"):el("cardB");
-    card.classList.add("flash");
-    setTimeout(()=>card.classList.remove("flash"),250);
+
+    const card = team==="A" ? el("cardA") : el("cardB")
+
+    card.classList.add("flash")
+
+    setTimeout(()=>card.classList.remove("flash"),250)
+
   }
 
   function teamName(st,team){
+
     if(team==="A"){
-      return st.mode==="doubles" && st.A2
-              ? st.A1+" / "+st.A2
-              : st.A1;
+      return st.players.A
     }else{
-      return st.mode==="doubles" && st.B2
-              ? st.B1+" / "+st.B2
-              : st.B1;
+      return st.players.B
     }
+
   }
 
   /* =====================
      START MATCH
   ===================== */
 
-  el("startBtn").onclick=()=>{
+  el("startBtn").onclick = ()=>{
 
-    if(!lastState) return;
+    if(!lastState) return
 
-    const nameA = teamName(lastState,"A");
-    const nameB = teamName(lastState,"B");
+    const nameA = teamName(lastState,"A")
+    const nameB = teamName(lastState,"B")
 
     const choice = prompt(
             "Qui sert en premier ?\n\n1 = "+nameA+
             "\n2 = "+nameB
-    );
+    )
 
     if(choice==="1"){
-      safeSend("START_MATCH",{firstServer:"A"});
+      safeSend("SET_SERVE",{serve:"A"})
     }
 
     if(choice==="2"){
-      safeSend("START_MATCH",{firstServer:"B"});
+      safeSend("SET_SERVE",{serve:"B"})
     }
-  };
+
+  }
 
   /* =====================
      SETTINGS
   ===================== */
 
   function applySettings(){
-    safeSend("UPDATE_SETTINGS",{
-      mode:el("mode").value,
-      A1:el("A1").value,
-      A2:el("A2").value,
-      B1:el("B1").value,
-      B2:el("B2").value,
-      bestOf:parseInt(el("bestOf").value)
-    });
+
+    safeSend("APPLY_SETTINGS",{
+
+      payload:{
+        players:{
+          A:el("A1").value || "JOUEUR A",
+          B:el("B1").value || "JOUEUR B"
+        },
+        bestOf:parseInt(el("bestOf").value) || 5,
+        firstServer:"A"
+      }
+
+    })
+
   }
 
   /* =====================
      SOCKET
   ===================== */
 
-  socket.onmessage=(e)=>{
-    const st=JSON.parse(e.data);
-    lastState=st;
+  socket.on("connect",()=>{
 
-    const nameA=teamName(st,"A");
-    const nameB=teamName(st,"B");
+    socket.emit("join",room)
 
-    el("nameA").textContent=nameA;
-    el("nameB").textContent=nameB;
+  })
 
-    el("scoreA").textContent=st.pointsA;
-    el("scoreB").textContent=st.pointsB;
+  socket.on("state",(st)=>{
 
-    el("btnA").textContent="+1 "+nameA;
-    el("btnB").textContent="+1 "+nameB;
+    lastState = st
 
-    // Active +1 seulement si matchStarted
-    el("btnA").disabled=!st.matchStarted || st.timeoutActive;
-    el("btnB").disabled=!st.matchStarted || st.timeoutActive;
+    const nameA = teamName(st,"A")
+    const nameB = teamName(st,"B")
 
-    el("btnA").onclick=()=>{
-      safeSend("POINT_A");
-      flash("A");
-    };
+    el("nameA").textContent = nameA
+    el("nameB").textContent = nameB
 
-    el("btnB").onclick=()=>{
-      safeSend("POINT_B");
-      flash("B");
-    };
+    el("scoreA").textContent = st.points.A
+    el("scoreB").textContent = st.points.B
 
-    el("toA").onclick=()=>safeSend("TIMEOUT_A");
-    el("toB").onclick=()=>safeSend("TIMEOUT_B");
-    el("endTimeout").onclick=()=>safeSend("END_TIMEOUT");
+    el("btnA").textContent = "+1 "+nameA
+    el("btnB").textContent = "+1 "+nameB
 
-    el("toA").disabled=st.timeoutUsedA || !st.matchStarted;
-    el("toB").disabled=st.timeoutUsedB || !st.matchStarted;
+// Active +1 seulement si pas timeout
+    el("btnA").disabled = st.timeoutActive
+    el("btnB").disabled = st.timeoutActive
 
-    el("endTimeout").style.display=st.timeoutActive?"block":"none";
+    el("btnA").onclick = ()=>{
+      safeSend("POINT_A")
+      flash("A")
+    }
 
-    el("startBtn").style.display=st.matchStarted?"none":"block";
+    el("btnB").onclick = ()=>{
+      safeSend("POINT_B")
+      flash("B")
+    }
 
-    // sync settings
-    el("mode").value=st.mode;
-    el("A1").value=st.A1;
-    el("A2").value=st.A2;
-    el("B1").value=st.B1;
-    el("B2").value=st.B2;
-    el("bestOf").value=st.bestOf;
-  };
+    el("toA").onclick = ()=>safeSend("TIMEOUT_START",{by:"A"})
+    el("toB").onclick = ()=>safeSend("TIMEOUT_START",{by:"B"})
+    el("endTimeout").onclick = ()=>safeSend("TIMEOUT_END")
+
+    el("toA").disabled = st.timeoutUsed.A
+    el("toB").disabled = st.timeoutUsed.B
+
+    el("endTimeout").style.display =
+            st.timeoutActive ? "block":"none"
+
+    el("startBtn").style.display =
+            (st.points.A===0 && st.points.B===0 && st.sets.A===0 && st.sets.B===0)
+                    ? "block":"none"
+
+// sync settings
+
+    el("A1").value = st.players.A
+    el("B1").value = st.players.B
+    el("bestOf").value = st.bestOf
+
+  })
 
   function switchPage(page,e){
-    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-    el(page).classList.add("active");
-    e.target.classList.add("active");
+
+    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"))
+
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"))
+
+    el(page).classList.add("active")
+
+    e.target.classList.add("active")
+
   }
+
 </script>
 
 </body>
