@@ -89,16 +89,36 @@
 
     socket.on("state",(st)=>{
 
-        document.getElementById("playerA").innerText = st.players.A
-        document.getElementById("playerB").innerText = st.players.B
+        /* ======================
+           AJOUT : gestion inversion
+        ====================== */
 
-        document.getElementById("scoreA").innerText = st.points.A
-        document.getElementById("scoreB").innerText = st.points.B
+        let left = "A"
+        let right = "B"
 
-        document.getElementById("setsA").innerText = st.sets.A
-        document.getElementById("setsB").innerText = st.sets.B
+        if(st.sideSwap){
+            left = "B"
+            right = "A"
+        }
 
-        document.getElementById("server").innerText = st.serve
+        /* ======================
+           AFFICHAGE
+        ====================== */
+
+        document.getElementById("playerA").innerText = st.players[left]
+        document.getElementById("playerB").innerText = st.players[right]
+
+        document.getElementById("scoreA").innerText = st.points[left]
+        document.getElementById("scoreB").innerText = st.points[right]
+
+        document.getElementById("setsA").innerText = st.sets[left]
+        document.getElementById("setsB").innerText = st.sets[right]
+
+        if(st.serve === left){
+            document.getElementById("server").innerText = st.players[left]
+        }else{
+            document.getElementById("server").innerText = st.players[right]
+        }
 
     })
 
