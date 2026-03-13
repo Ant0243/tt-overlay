@@ -1,16 +1,11 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>TT Referee Panel</title>
-
-  <script src="/socket.io/socket.io.js"></script>
+  <title>TT CONTROL PRO</title>
 
   <style>
-
     body{
       margin:0;
       background:#11151c;
@@ -24,11 +19,32 @@
       padding:18px;
     }
 
+    .tabs{
+      display:flex;
+      gap:10px;
+      margin-bottom:15px;
+    }
+
+    .tab{
+      flex:1;
+      padding:12px;
+      background:#1e2530;
+      text-align:center;
+      border-radius:12px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .tab.active{ background:#0007f8; }
+
+    .page{display:none;}
+    .page.active{display:block;}
+
     .scoreGrid{
       display:grid;
       grid-template-columns:1fr 1fr;
       gap:15px;
-      margin-bottom:20px;
+      margin-bottom:15px;
     }
 
     .card{
@@ -36,22 +52,25 @@
       padding:20px;
       border-radius:18px;
       text-align:center;
+      transition:.2s;
+    }
+
+    .card.flash{
+      animation:flash .25s ease;
+    }
+
+    @keyframes flash{
+      50%{transform:scale(1.08);}
     }
 
     .name{
-      font-weight:900;
+      font-weight:800;
       margin-bottom:8px;
     }
 
     .points{
-      font-size:44px;
+      font-size:42px;
       font-weight:900;
-    }
-
-    .serve{
-      margin-top:8px;
-      font-size:20px;
-      color:#ffd54f;
     }
 
     button{
@@ -63,92 +82,112 @@
       width:100%;
       font-weight:900;
       cursor:pointer;
+      transition:.2s;
     }
 
-    button:active{
-      transform:scale(.95);
+    button:active{transform:scale(.95);}
+
+    .startBtn{ background: #a5ae58; }
+    .btnA{ background: #f80000; }
+    .btnB{ background: #0070ff; }
+    .timeout{ background:#ff9800; }
+    .endTimeout{ background:#ffc107;color:#111; }
+    .small{ font-size:15px;padding:12px; }
+    .danger{ background:#b00020; }
+
+    input,select{
+      width:100%;
+      padding:10px;
+      margin:8px 0;
+      border-radius:10px;
+      border:none;
+      background:#1e2530;
+      color:white;
     }
 
-    .startBtn{
-      background:#a5ae58;
+    .badge{
+      background:#2e7d32;
+      font-size:12px;
+      padding:4px 8px;
+      border-radius:8px;
+      margin-left:6px;
     }
-
-    .btnA{
-      background:#f80000;
-    }
-
-    .btnB{
-      background:#0070ff;
-    }
-
-    .timeout{
-      background:#ff9800;
-    }
-
-    .small{
-      font-size:15px;
-      padding:12px;
-    }
-
-    .danger{
-      background:#b00020;
-    }
-
   </style>
 </head>
-
 <body>
 
 <div class="wrapper">
 
-  <div class="scoreGrid">
+  <div class="tabs">
+    <div class="tab active" onclick="switchPage('match',event)">Match</div>
+    <div class="tab" onclick="switchPage('settings',event)">Paramètres</div>
+  </div>
 
-    <div class="card">
+  <!-- MATCH -->
+  <div id="match" class="page active">
 
-      <div class="name" id="nameA">JOUEUR A</div>
+    <div class="scoreGrid">
+      <div class="card" id="cardA">
+        <div class="name" id="nameA">JOUEUR A</div>
+        <div class="points" id="scoreA">0</div>
+      </div>
 
-      <div class="points" id="scoreA">0</div>
-
-      <div class="serve" id="serveA"></div>
-
+      <div class="card" id="cardB">
+        <div class="name" id="nameB">JOUEUR B</div>
+        <div class="points" id="scoreB">0</div>
+      </div>
     </div>
 
-    <div class="card">
+    <button class="startBtn" id="startBtn">Démarrer</button>
 
-      <div class="name" id="nameB">JOUEUR B</div>
+    <button class="btnA" id="btnA" disabled></button>
+    <button class="btnB" id="btnB" disabled></button>
 
-      <div class="points" id="scoreB">0</div>
+    <button class="timeout" id="toA">Temps mort A</button>
+    <button class="timeout" id="toB">Temps mort B</button>
 
-      <div class="serve" id="serveB"></div>
+    <button class="endTimeout" id="endTimeout" style="display:none;">
+      Fin du temps mort
+    </button>
 
-    </div>
+    <button class="small" onclick="safeSend('UNDO')">Annuler</button>
+    <button class="small danger" onclick="safeSend('RESET_MATCH')">Reset Match</button>
 
   </div>
 
-  <button class="startBtn" id="startBtn">
-    Démarrer match
-  </button>
+  <!-- SETTINGS -->
+  <div id="settings" class="page">
 
-  <button class="btnA" id="btnA" disabled></button>
-  <button class="btnB" id="btnB" disabled></button>
+    <label>Mode</label>
+    <select id="mode">
+      <option value="singles">Simple</option>
+      <option value="doubles">Double</option>
+    </select>
 
-  <button class="timeout" id="toA">
-    Temps mort A
-  </button>
+    <label>A1</label>
+    <input id="A1">
 
-  <button class="timeout" id="toB">
-    Temps mort B
-  </button>
+    <label>A2</label>
+    <input id="A2">
 
-  <button class="small" onclick="safeSend('UNDO')">
-    Annuler
-  </button>
+    <label>B1</label>
+    <input id="B1">
 
-  <button class="small danger" onclick="safeSend('RESET_MATCH')">
-    Reset Match
-  </button>
+    <label>B2</label>
+    <input id="B2">
+
+    <label>Format</label>
+    <select id="bestOf">
+      <option value="3">BO3</option>
+      <option value="5">BO5</option>
+    </select>
+
+    <button class="btnA" onclick="applySettings()">Appliquer</button>
+
+  </div>
 
 </div>
+<script src="/socket.io/socket.io.js"></script>
 
 <script>
 
@@ -161,9 +200,9 @@
 
   let lastState = null
 
-  /* ====================
-  SEND ACTION
-  ==================== */
+  /* =====================
+     UTIL
+  ===================== */
 
   function safeSend(type,data={}){
 
@@ -175,40 +214,76 @@
 
   }
 
-  /* ====================
-  START MATCH
-  ==================== */
+  function flash(team){
+
+    const card = team==="A" ? el("cardA") : el("cardB")
+
+    card.classList.add("flash")
+
+    setTimeout(()=>card.classList.remove("flash"),250)
+
+  }
+
+  function teamName(st,team){
+
+    if(team==="A"){
+      return st.players.A
+    }else{
+      return st.players.B
+    }
+
+  }
+
+  /* =====================
+     START MATCH
+  ===================== */
 
   el("startBtn").onclick = ()=>{
 
     if(!lastState) return
 
-    const nameA = lastState.players.A
-    const nameB = lastState.players.B
+    const nameA = teamName(lastState,"A")
+    const nameB = teamName(lastState,"B")
 
-    const serveChoice = prompt(
-            "Qui sert en premier ?\n\n1 = "+nameA+"\n2 = "+nameB
+    const choice = prompt(
+            "Qui sert en premier ?\n\n1 = "+nameA+
+            "\n2 = "+nameB
     )
 
-    if(serveChoice==="1")
+    if(choice==="1"){
       safeSend("SET_SERVE",{serve:"A"})
+    }
 
-    if(serveChoice==="2")
+    if(choice==="2"){
       safeSend("SET_SERVE",{serve:"B"})
-
-
-    const sideChoice = prompt(
-            "Quel côté est le joueur A ?\n\n1 = côté 1\n2 = côté 2"
-    )
-
-    if(sideChoice==="2")
-      safeSend("SWAP_SIDES")
+    }
 
   }
 
-  /* ====================
-  SOCKET
-  ==================== */
+  /* =====================
+     SETTINGS
+  ===================== */
+
+  function applySettings(){
+
+    safeSend("APPLY_SETTINGS",{
+
+      payload:{
+        players:{
+          A:el("A1").value || "JOUEUR A",
+          B:el("B1").value || "JOUEUR B"
+        },
+        bestOf:parseInt(el("bestOf").value) || 5,
+        firstServer:"A"
+      }
+
+    })
+
+  }
+
+  /* =====================
+     SOCKET
+  ===================== */
 
   socket.on("connect",()=>{
 
@@ -220,39 +295,65 @@
 
     lastState = st
 
-    el("nameA").textContent = st.players.A
-    el("nameB").textContent = st.players.B
+    const nameA = teamName(st,"A")
+    const nameB = teamName(st,"B")
+
+    el("nameA").textContent = nameA
+    el("nameB").textContent = nameB
 
     el("scoreA").textContent = st.points.A
     el("scoreB").textContent = st.points.B
 
-    el("btnA").textContent = "+1 "+st.players.A
-    el("btnB").textContent = "+1 "+st.players.B
+    el("btnA").textContent = "+1 "+nameA
+    el("btnB").textContent = "+1 "+nameB
 
+// Active +1 seulement si pas timeout
     el("btnA").disabled = st.timeoutActive
     el("btnB").disabled = st.timeoutActive
 
-    el("btnA").onclick = ()=>safeSend("POINT_A")
-    el("btnB").onclick = ()=>safeSend("POINT_B")
+    el("btnA").onclick = ()=>{
+      safeSend("POINT_A")
+      flash("A")
+    }
+
+    el("btnB").onclick = ()=>{
+      safeSend("POINT_B")
+      flash("B")
+    }
 
     el("toA").onclick = ()=>safeSend("TIMEOUT_START",{by:"A"})
     el("toB").onclick = ()=>safeSend("TIMEOUT_START",{by:"B"})
+    el("endTimeout").onclick = ()=>safeSend("TIMEOUT_END")
 
-    /* SERVICE ARROW */
+    el("toA").disabled = st.timeoutUsed.A
+    el("toB").disabled = st.timeoutUsed.B
 
-    if(st.serve==="A"){
+    el("endTimeout").style.display =
+            st.timeoutActive ? "block":"none"
 
-      el("serveA").textContent = "◀ SERVICE"
-      el("serveB").textContent = ""
+    el("startBtn").style.display =
+            (st.points.A===0 && st.points.B===0 && st.sets.A===0 && st.sets.B===0)
+                    ? "block":"none"
 
-    }else{
+// sync settings
 
-      el("serveB").textContent = "SERVICE ▶"
-      el("serveA").textContent = ""
-
-    }
+    el("A1").value = st.players.A
+    el("B1").value = st.players.B
+    el("bestOf").value = st.bestOf
 
   })
+
+  function switchPage(page,e){
+
+    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"))
+
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"))
+
+    el(page).classList.add("active")
+
+    e.target.classList.add("active")
+
+  }
 
 </script>
 
