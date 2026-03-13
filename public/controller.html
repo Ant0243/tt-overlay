@@ -114,13 +114,14 @@
     }
   </style>
 </head>
+
 <body>
 
 <div class="wrapper">
 
   <div class="tabs">
-    <div class="tab active" onclick="switchPage('match',event)">Match</div>
-    <div class="tab" onclick="switchPage('settings',event)">Paramètres</div>
+    <div class="tab active" data-page="match">Match</div>
+    <div class="tab" data-page="settings">Paramètres</div>
   </div>
 
   <!-- MATCH -->
@@ -187,6 +188,7 @@
   </div>
 
 </div>
+
 <script src="/socket.io/socket.io.js"></script>
 
 <script>
@@ -201,7 +203,25 @@
   let lastState = null
 
   /* =====================
-     UTIL
+  NAVIGATION ONGLET
+  ===================== */
+
+  document.querySelectorAll(".tab").forEach(tab=>{
+    tab.addEventListener("click",()=>{
+
+      const page = tab.dataset.page
+
+      document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"))
+      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"))
+
+      document.getElementById(page).classList.add("active")
+      tab.classList.add("active")
+
+    })
+  })
+
+  /* =====================
+  UTIL
   ===================== */
 
   function safeSend(type,data={}){
@@ -235,12 +255,15 @@
   }
 
   /* =====================
-     START MATCH
+  START MATCH
   ===================== */
 
   el("startBtn").onclick = ()=>{
 
-    if(!lastState) return
+    if(!lastState){
+      alert("Connexion en cours avec le serveur...")
+      return
+    }
 
     const nameA = teamName(lastState,"A")
     const nameB = teamName(lastState,"B")
@@ -261,7 +284,7 @@
   }
 
   /* =====================
-     SETTINGS
+  SETTINGS
   ===================== */
 
   function applySettings(){
@@ -282,7 +305,7 @@
   }
 
   /* =====================
-     SOCKET
+  SOCKET
   ===================== */
 
   socket.on("connect",()=>{
@@ -307,7 +330,6 @@
     el("btnA").textContent = "+1 "+nameA
     el("btnB").textContent = "+1 "+nameB
 
-// Active +1 seulement si pas timeout
     el("btnA").disabled = st.timeoutActive
     el("btnB").disabled = st.timeoutActive
 
@@ -335,25 +357,11 @@
             (st.points.A===0 && st.points.B===0 && st.sets.A===0 && st.sets.B===0)
                     ? "block":"none"
 
-// sync settings
-
     el("A1").value = st.players.A
     el("B1").value = st.players.B
     el("bestOf").value = st.bestOf
 
   })
-
-  function switchPage(page,e){
-
-    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"))
-
-    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"))
-
-    el(page).classList.add("active")
-
-    e.target.classList.add("active")
-
-  }
 
 </script>
 
