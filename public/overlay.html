@@ -5,12 +5,13 @@
   <title>TT Overlay Pro</title>
 
   <style>
+
     :root{
       --bg: rgba(12,14,18,.88);
       --stroke: rgba(255,255,255,.08);
       --text: rgba(255,255,255,.95);
-      --accentA: #0070ff;
-      --accentB: #f80000;
+      --accentA:#0070ff;
+      --accentB:#f80000;
     }
 
     html,body{
@@ -46,8 +47,8 @@
       font-size:14px;
     }
 
-    .banner.timeout{ border:2px solid #FFC107; }
-    .banner.match{ border:2px solid #FF1744; }
+    .banner.timeout{border:2px solid #FFC107;}
+    .banner.match{border:2px solid #FF1744;}
 
     .card{
       background:var(--bg);
@@ -59,7 +60,7 @@
 
     .row{
       display:grid;
-      grid-template-columns:1fr 16px auto 60px;
+      grid-template-columns:1fr 16px 40px 60px;
       align-items:center;
       gap:10px;
       padding:14px;
@@ -69,8 +70,8 @@
       border-top:1px solid rgba(255,255,255,.08);
     }
 
-    .row.a{ box-shadow: inset 7px 0 0 var(--accentB); }
-    .row.b{ box-shadow: inset 7px 0 0 var(--accentA); }
+    .row.a{box-shadow: inset 7px 0 0 var(--accentB);}
+    .row.b{box-shadow: inset 7px 0 0 var(--accentA);}
 
     .nameWrap{
       display:grid;
@@ -92,6 +93,7 @@
       opacity:0;
       transition:.2s ease;
     }
+
     .service.on{
       opacity:1;
       transform:translateX(3px);
@@ -102,24 +104,21 @@
       opacity:.2;
       justify-self:end;
     }
-    .timeoutIcon.on{ opacity:1; }
 
-    .sets{ display:flex; gap:6px; }
+    .timeoutIcon.on{opacity:1;}
 
-    .set{
-      width:11px;
-      height:11px;
-      border-radius:3px;
-      background:rgba(255,255,255,.15);
+    .sets{
+      font-size:20px;
+      font-weight:800;
+      text-align:center;
     }
-    .set.b{ background:var(--accentA); }
-    .set.a{ background:var(--accentB); }
 
     .score{
       font-size:30px;
       font-weight:900;
       text-align:right;
     }
+
   </style>
 </head>
 
@@ -139,8 +138,11 @@
         <span class="name" id="nameA">JOUEUR A</span>
         <span class="timeoutIcon" id="toA">🕒</span>
       </div>
+
       <div class="service" id="serveA">▶</div>
-      <div class="sets" id="setsA"></div>
+
+      <div class="sets" id="setsA">0</div>
+
       <div class="score" id="scoreA">0</div>
     </div>
 
@@ -149,13 +151,17 @@
         <span class="name" id="nameB">JOUEUR B</span>
         <span class="timeoutIcon" id="toB">🕒</span>
       </div>
+
       <div class="service" id="serveB">▶</div>
-      <div class="sets" id="setsB"></div>
+
+      <div class="sets" id="setsB">0</div>
+
       <div class="score" id="scoreB">0</div>
     </div>
 
   </div>
 </div>
+
 <script src="/socket.io/socket.io.js"></script>
 
 <script>
@@ -168,28 +174,6 @@
   const el = id => document.getElementById(id)
 
   let bestOf = 5
-
-  function renderSets(container,count,team){
-
-    container.innerHTML=""
-
-    const needed = Math.ceil(bestOf/2)
-
-    for(let i=0;i<needed;i++){
-
-      const d=document.createElement("div")
-
-      d.className="set"
-
-      if(i<count){
-        d.classList.add(team==="A"?"a":"b")
-      }
-
-      container.appendChild(d)
-
-    }
-
-  }
 
   function matchPoint(st){
 
@@ -206,9 +190,7 @@
   }
 
   socket.on("connect",()=>{
-
     socket.emit("join",room)
-
   })
 
   socket.on("state",(st)=>{
@@ -221,8 +203,9 @@
     el("scoreA").textContent = st.points.A
     el("scoreB").textContent = st.points.B
 
-    renderSets(el("setsA"),st.sets.A,"A")
-    renderSets(el("setsB"),st.sets.B,"B")
+// SETS (chiffres)
+    el("setsA").textContent = st.sets.A
+    el("setsB").textContent = st.sets.B
 
 // SERVICE
     el("serveA").classList.toggle("on", st.server==="A")
