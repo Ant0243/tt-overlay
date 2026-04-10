@@ -1,230 +1,531 @@
+<!-- /overlay/index.html -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>TT Overlay Pro</title>
+  <meta charset="UTF-8" />
+  <title>TT Overlay Pro V2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
-
     :root{
-      --bg: rgba(12,14,18,.88);
+      --bg: rgba(9, 10, 14, 0.90);
+      --bg-2: rgba(17, 18, 26, 0.94);
       --stroke: rgba(255,255,255,.08);
-      --text: rgba(255,255,255,.95);
-      --accentA:#0070ff;
-      --accentB:#f80000;
+      --text: rgba(255,255,255,.96);
+      --text-soft: rgba(255,255,255,.72);
+      --purple: #d100ff;
+      --purple-2: #8b2cff;
+      --score-active: linear-gradient(180deg, #ff45ff 0%, #ca00ff 100%);
+      --score-idle: linear-gradient(180deg, #7e3dff 0%, #5810d9 100%);
+      --timeout-a: linear-gradient(90deg, rgba(255, 193, 7, .30), rgba(255, 111, 0, .18));
+      --timeout-b: linear-gradient(90deg, rgba(0, 208, 255, .28), rgba(92, 51, 255, .18));
+      --shadow: 0 18px 42px rgba(0,0,0,.36);
+      --radius: 12px;
+      --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    }
+
+    *{
+      box-sizing:border-box;
     }
 
     html,body{
       margin:0;
+      width:100%;
+      height:100%;
+      overflow:hidden;
       background:transparent;
-      font-family:-apple-system,system-ui;
+      font-family:var(--font);
     }
 
     .overlay{
       position:fixed;
-      bottom:28px;
       left:28px;
-      width:420px;
+      bottom:28px;
+      width:440px;
       color:var(--text);
+      pointer-events:none;
+      user-select:none;
     }
 
     .banners{
-      position:absolute;
-      bottom:135px;
-      width:100%;
       display:flex;
       flex-direction:column;
-      align-items:center;
-      gap:6px;
+      align-items:flex-start;
+      gap:8px;
+      margin-bottom:10px;
     }
 
     .banner{
       display:none;
-      padding:8px 22px;
-      border-radius:8px;
-      font-weight:700;
-      background:rgba(0,0,0,.85);
-      font-size:14px;
+      align-items:center;
+      gap:10px;
+      min-height:40px;
+      padding:8px 14px;
+      border-radius:10px;
+      font-weight:900;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+      border:1px solid rgba(255,255,255,.10);
+      backdrop-filter:blur(10px);
+      -webkit-backdrop-filter:blur(10px);
+      box-shadow:var(--shadow);
     }
 
-    .banner.timeout{border:2px solid #FFC107;}
-    .banner.match{border:2px solid #FF1744;}
+    .banner.timeout{
+      background:linear-gradient(180deg, rgba(255,193,7,.92), rgba(255,111,0,.92));
+      color:#1a1200;
+    }
+
+    .banner.match{
+      background:linear-gradient(180deg, rgba(255,23,68,.94), rgba(183,0,52,.94));
+      color:#fff;
+    }
+
+    .timer{
+      min-width:54px;
+      text-align:center;
+      padding:4px 8px;
+      border-radius:999px;
+      background:rgba(0,0,0,.18);
+      font-variant-numeric:tabular-nums;
+    }
 
     .card{
-      background:var(--bg);
+      background:linear-gradient(180deg, var(--bg), var(--bg-2));
       border:1px solid var(--stroke);
       border-radius:14px;
       overflow:hidden;
-      backdrop-filter:blur(12px);
+      backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px);
+      box-shadow:var(--shadow);
     }
 
     .row{
       display:grid;
-      grid-template-columns:1fr 16px 40px 60px;
+      grid-template-columns: 1fr 18px 52px 62px;
       align-items:center;
       gap:10px;
-      padding:14px;
+      min-height:54px;
+      padding:0 14px;
+      position:relative;
+      background:transparent;
+      transition:background .18s ease;
     }
 
     .row + .row{
       border-top:1px solid rgba(255,255,255,.08);
     }
 
-    .row.a{box-shadow: inset 7px 0 0 var(--accentB);}
-    .row.b{box-shadow: inset 7px 0 0 var(--accentA);}
+    .row-main{
+      min-width:0;
+      display:grid;
+      grid-template-columns:16px 1fr;
+      align-items:center;
+      gap:10px;
+    }
+
+    .row.timeoutA{
+      background:var(--timeout-a);
+    }
+
+    .row.timeoutB{
+      background:var(--timeout-b);
+    }
+
+    .serve{
+      width:0;
+      height:0;
+      border-top:7px solid transparent;
+      border-bottom:7px solid transparent;
+      border-left:11px solid transparent;
+      opacity:0;
+      transform:translateX(-2px);
+      transition:.18s ease;
+      filter:drop-shadow(0 0 8px rgba(209, 0, 255, .55));
+    }
+
+    .serve.on{
+      opacity:1;
+      transform:translateX(0);
+      border-left-color:var(--purple);
+    }
 
     .nameWrap{
-      display:grid;
-      grid-template-columns:1fr 18px;
-      align-items:center;
+      min-width:0;
+      display:flex;
+      align-items:baseline;
       gap:8px;
+      overflow:hidden;
+      white-space:nowrap;
     }
 
     .name{
-      font-weight:600;
+      min-width:0;
       overflow:hidden;
-      display:-webkit-box;
-      -webkit-line-clamp:2;
-      -webkit-box-orient:vertical;
+      text-overflow:ellipsis;
+      font-size:18px;
+      line-height:1;
+      font-weight:900;
+      letter-spacing:.01em;
+      text-transform:uppercase;
+      color:var(--text);
     }
 
-    .service{
+    .rank{
+      flex:0 0 auto;
       font-size:12px;
-      opacity:0;
-      transition:.2s ease;
+      line-height:1;
+      font-weight:800;
+      color:var(--text-soft);
     }
 
-    .service.on{
-      opacity:1;
-      transform:translateX(3px);
+    .rank.hidden{
+      display:none;
     }
 
     .timeoutIcon{
-      font-size:11px;
-      opacity:.2;
+      font-size:12px;
+      opacity:.18;
       justify-self:end;
+      transition:.18s ease;
     }
 
-    .timeoutIcon.on{opacity:1;}
+    .timeoutIcon.on{
+      opacity:1;
+      transform:scale(1.06);
+    }
 
     .sets{
-      font-size:20px;
-      font-weight:800;
       text-align:center;
+      font-size:20px;
+      font-weight:900;
+      font-variant-numeric:tabular-nums;
+      color:#fff;
     }
 
     .score{
+      display:grid;
+      place-items:center;
+      min-height:54px;
+      margin-right:-14px;
       font-size:30px;
       font-weight:900;
-      text-align:right;
+      font-variant-numeric:tabular-nums;
+      color:#121212;
+      background:var(--score-idle);
     }
 
+    .row.leading .score{
+      background:var(--score-active);
+      color:#111;
+    }
+
+    .meta{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-top:10px;
+      color:var(--text-soft);
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+
+    .pill{
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(10,10,14,.74);
+      backdrop-filter:blur(8px);
+      -webkit-backdrop-filter:blur(8px);
+    }
+
+    @media (max-width: 640px){
+      .overlay{
+        left:16px;
+        bottom:16px;
+        width:min(92vw, 440px);
+      }
+
+      .row{
+        grid-template-columns: 1fr 16px 48px 56px;
+      }
+
+      .name{
+        font-size:16px;
+      }
+
+      .score{
+        font-size:26px;
+      }
+    }
   </style>
 </head>
-
 <body>
 
 <div class="overlay">
-
   <div class="banners">
-    <div class="banner timeout" id="timeoutBanner">TEMPS MORT</div>
-    <div class="banner match" id="matchBanner">BALLE DE MATCH</div>
+    <div class="banner timeout" id="timeoutBanner">
+      <span id="timeoutLabel">TEMPS MORT</span>
+      <span class="timer" id="timeoutTimer">1:00</span>
+    </div>
+
+    <div class="banner match" id="matchBanner">
+      <span>BALLE DE MATCH</span>
+    </div>
   </div>
 
   <div class="card">
+    <div class="row" id="rowA">
+      <div class="row-main">
+        <div class="serve" id="serveA"></div>
 
-    <div class="row a">
-      <div class="nameWrap">
-        <span class="name" id="nameA">JOUEUR A</span>
-        <span class="timeoutIcon" id="toA">🕒</span>
+        <div class="nameWrap">
+          <span class="name" id="nameA">JOUEUR A</span>
+          <span class="rank" id="rankA">#1</span>
+        </div>
       </div>
 
-      <div class="service" id="serveA">▶</div>
-
+      <div class="timeoutIcon" id="toA">🕒</div>
       <div class="sets" id="setsA">0</div>
-
       <div class="score" id="scoreA">0</div>
     </div>
 
-    <div class="row b">
-      <div class="nameWrap">
-        <span class="name" id="nameB">JOUEUR B</span>
-        <span class="timeoutIcon" id="toB">🕒</span>
+    <div class="row" id="rowB">
+      <div class="row-main">
+        <div class="serve" id="serveB"></div>
+
+        <div class="nameWrap">
+          <span class="name" id="nameB">JOUEUR B</span>
+          <span class="rank" id="rankB">#2</span>
+        </div>
       </div>
 
-      <div class="service" id="serveB">▶</div>
-
+      <div class="timeoutIcon" id="toB">🕒</div>
       <div class="sets" id="setsB">0</div>
-
       <div class="score" id="scoreB">0</div>
     </div>
+  </div>
 
+  <div class="meta">
+    <div class="pill" id="modePill">SIMPLE</div>
+    <div class="pill" id="bestOfPill">BO5</div>
+    <div class="pill" id="roundPill">MATCH</div>
   </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-
 <script>
+  const room = new URLSearchParams(location.search).get("room") || "table1";
+  const socket = io();
+  const el = (id) => document.getElementById(id);
 
-  const room =
-          new URLSearchParams(location.search).get("room") || "table1"
+  const refs = {
+    rowA: el("rowA"),
+    rowB: el("rowB"),
+    nameA: el("nameA"),
+    nameB: el("nameB"),
+    rankA: el("rankA"),
+    rankB: el("rankB"),
+    scoreA: el("scoreA"),
+    scoreB: el("scoreB"),
+    setsA: el("setsA"),
+    setsB: el("setsB"),
+    serveA: el("serveA"),
+    serveB: el("serveB"),
+    toA: el("toA"),
+    toB: el("toB"),
+    timeoutBanner: el("timeoutBanner"),
+    timeoutLabel: el("timeoutLabel"),
+    timeoutTimer: el("timeoutTimer"),
+    matchBanner: el("matchBanner"),
+    modePill: el("modePill"),
+    bestOfPill: el("bestOfPill"),
+    roundPill: el("roundPill")
+  };
 
-  const socket = io()
+  let bestOf = 5;
+  let currentState = null;
+  let timeoutInterval = null;
+  let timeoutEndAt = null;
 
-  const el = id => document.getElementById(id)
-
-  let bestOf = 5
-
-  function matchPoint(st){
-
-    const need = Math.ceil(bestOf/2)
-
-    const a = st.points.A
-    const b = st.points.B
-
-    if(st.sets.A === need-1 && a>=10 && a-b>=1) return true
-    if(st.sets.B === need-1 && b>=10 && b-a>=1) return true
-
-    return false
-
+  function safeText(value, fallback = "") {
+    const text = String(value ?? fallback).trim();
+    return text || fallback;
   }
 
-  socket.on("connect",()=>{
-    socket.emit("join",room)
-  })
+  function safeInt(value, fallback = 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
+  }
 
-  socket.on("state",(st)=>{
+  function getMode(st) {
+    return st.mode === "doubles" ? "doubles" : "singles";
+  }
 
-    bestOf = st.bestOf || 5
+  function getRanking(st, side) {
+    if (st.rankings && st.rankings[side] != null) return safeText(st.rankings[side]);
+    if (st.ranks && st.ranks[side] != null) return safeText(st.ranks[side]);
+    return "";
+  }
 
-    el("nameA").textContent = st.players.A
-    el("nameB").textContent = st.players.B
+  function showRankings(st) {
+    if (typeof st.showRankings === "boolean") return st.showRankings;
+    return getMode(st) !== "doubles";
+  }
 
-    el("scoreA").textContent = st.points.A
-    el("scoreB").textContent = st.points.B
+  function getTimeoutBy(st) {
+    if (st.timeoutBy === "A" || st.timeoutBy === "B") return st.timeoutBy;
+    if (st.timeoutUsed?.A && st.timeoutActive && !st.timeoutUsed?.B) return "A";
+    if (st.timeoutUsed?.B && st.timeoutActive && !st.timeoutUsed?.A) return "B";
+    return null;
+  }
 
-// SETS (chiffres)
-    el("setsA").textContent = st.sets.A
-    el("setsB").textContent = st.sets.B
+  function formatTimer(totalSec) {
+    const sec = Math.max(0, safeInt(totalSec));
+    const mm = String(Math.floor(sec / 60));
+    const ss = String(sec % 60).padStart(2, "0");
+    return `${mm}:${ss}`;
+  }
 
-// SERVICE
-    el("serveA").classList.toggle("on", st.server==="A")
-    el("serveB").classList.toggle("on", st.server==="B")
+  function clearTimerLoop() {
+    if (timeoutInterval) {
+      clearInterval(timeoutInterval);
+      timeoutInterval = null;
+    }
+    timeoutEndAt = null;
+  }
 
-// TIMEOUT
-    el("timeoutBanner").style.display =
-            st.timeoutActive ? "block":"none"
+  function setTimeoutBannerVisible(visible) {
+    refs.timeoutBanner.style.display = visible ? "inline-flex" : "none";
+  }
 
-// MATCH POINT
-    el("matchBanner").style.display =
-            matchPoint(st) ? "block":"none"
+  function updateTimerDisplayFromEndAt() {
+    if (!timeoutEndAt) {
+      refs.timeoutTimer.textContent = "1:00";
+      return;
+    }
 
-// TIMEOUT USED
-    el("toA").classList.toggle("on",st.timeoutUsed.A)
-    el("toB").classList.toggle("on",st.timeoutUsed.B)
+    const remainingSec = Math.max(0, Math.ceil((timeoutEndAt - Date.now()) / 1000));
+    refs.timeoutTimer.textContent = formatTimer(remainingSec);
 
-  })
+    if (remainingSec <= 0) {
+      clearTimerLoop();
+    }
+  }
 
+  function startLocalTimeoutCountdown(st) {
+    clearTimerLoop();
+
+    const durationSec = safeInt(st.timeoutDurationSec, 60);
+
+    if (st.timeoutRemainingSec != null) {
+      timeoutEndAt = Date.now() + safeInt(st.timeoutRemainingSec) * 1000;
+    } else if (st.timeoutStartedAt != null) {
+      const startedAt = new Date(st.timeoutStartedAt).getTime();
+      timeoutEndAt = Number.isFinite(startedAt) ? startedAt + durationSec * 1000 : Date.now() + durationSec * 1000;
+    } else {
+      timeoutEndAt = Date.now() + durationSec * 1000;
+    }
+
+    updateTimerDisplayFromEndAt();
+    timeoutInterval = setInterval(updateTimerDisplayFromEndAt, 250);
+  }
+
+  function matchPoint(st) {
+    const need = Math.ceil(bestOf / 2);
+    const a = safeInt(st.points?.A);
+    const b = safeInt(st.points?.B);
+
+    if (safeInt(st.sets?.A) === need - 1 && a >= 10 && a - b >= 1) return true;
+    if (safeInt(st.sets?.B) === need - 1 && b >= 10 && b - a >= 1) return true;
+
+    return false;
+  }
+
+  function updateLeader(st) {
+    refs.rowA.classList.remove("leading");
+    refs.rowB.classList.remove("leading");
+
+    const a = safeInt(st.points?.A);
+    const b = safeInt(st.points?.B);
+
+    if (a > b) refs.rowA.classList.add("leading");
+    if (b > a) refs.rowB.classList.add("leading");
+  }
+
+  function updateTimeoutStyle(st) {
+    refs.rowA.classList.remove("timeoutA", "timeoutB");
+    refs.rowB.classList.remove("timeoutA", "timeoutB");
+
+    if (!st.timeoutActive) {
+      setTimeoutBannerVisible(false);
+      clearTimerLoop();
+      return;
+    }
+
+    const timeoutBy = getTimeoutBy(st);
+
+    refs.timeoutLabel.textContent =
+            timeoutBy === "A" ? "TEMPS MORT A" :
+                    timeoutBy === "B" ? "TEMPS MORT B" :
+                            "TEMPS MORT";
+
+    setTimeoutBannerVisible(true);
+
+    if (timeoutBy === "A") refs.rowA.classList.add("timeoutA");
+    if (timeoutBy === "B") refs.rowB.classList.add("timeoutB");
+
+    startLocalTimeoutCountdown(st);
+  }
+
+  function render(st) {
+    currentState = st;
+    bestOf = safeInt(st.bestOf, 5);
+
+    const rankingsVisible = showRankings(st);
+    const rankA = getRanking(st, "A");
+    const rankB = getRanking(st, "B");
+
+    refs.nameA.textContent = safeText(st.players?.A, "JOUEUR A");
+    refs.nameB.textContent = safeText(st.players?.B, "JOUEUR B");
+
+    refs.rankA.textContent = rankA ? `#${rankA.replace(/^#/, "")}` : "";
+    refs.rankB.textContent = rankB ? `#${rankB.replace(/^#/, "")}` : "";
+    refs.rankA.classList.toggle("hidden", !rankingsVisible || !rankA);
+    refs.rankB.classList.toggle("hidden", !rankingsVisible || !rankB);
+
+    refs.scoreA.textContent = String(safeInt(st.points?.A));
+    refs.scoreB.textContent = String(safeInt(st.points?.B));
+    refs.setsA.textContent = String(safeInt(st.sets?.A));
+    refs.setsB.textContent = String(safeInt(st.sets?.B));
+
+    refs.serveA.classList.toggle("on", st.server === "A");
+    refs.serveB.classList.toggle("on", st.server === "B");
+
+    refs.toA.classList.toggle("on", Boolean(st.timeoutUsed?.A));
+    refs.toB.classList.toggle("on", Boolean(st.timeoutUsed?.B));
+
+    refs.modePill.textContent = getMode(st) === "doubles" ? "DOUBLES" : "SIMPLE";
+    refs.bestOfPill.textContent = `BO${bestOf}`;
+    refs.roundPill.textContent = safeText(st.roundName || st.round || "MATCH");
+
+    refs.matchBanner.style.display = matchPoint(st) ? "inline-flex" : "none";
+
+    updateLeader(st);
+    updateTimeoutStyle(st);
+  }
+
+  socket.on("connect", () => {
+    socket.emit("join", room);
+  });
+
+  socket.on("state", (st) => {
+    render(st);
+  });
+
+  window.addEventListener("beforeunload", clearTimerLoop);
 </script>
 
 </body>
