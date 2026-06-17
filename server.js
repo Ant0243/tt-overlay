@@ -75,7 +75,8 @@ function snapshot(st) {
         server: st.server,
         timeoutUsed: st.timeoutUsed,
         timeoutActive: st.timeoutActive,
-        timeoutBy: st.timeoutBy
+        timeoutBy: st.timeoutBy,
+        _swappedAtFive: Boolean(st._swappedAtFive)
     }));
 }
 
@@ -86,6 +87,23 @@ function pushHistory(st) {
 
 function neededToWin(bestOf) {
     return Math.ceil((Number(bestOf) || 5) / 2);
+}
+
+function cleanPoint(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.min(99, Math.floor(n)));
+}
+
+function cleanSet(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.min(9, Math.floor(n)));
+}
+
+function cleanBestOf(value) {
+    const n = Number(value);
+    return n === 3 ? 3 : 5;
 }
 
 function recomputeServer(st) {
@@ -194,7 +212,7 @@ io.on("connection", (socket) => {
                 st.players.B = (p.players.B || "Joueur B").toString().trim().slice(0, 24);
             }
 
-            st.bestOf = Number(p.bestOf) || 5;
+            st.bestOf = cleanBestOf(p.bestOf);
             st.firstServer = p.firstServer === "B" ? "B" : "A";
             st.server = st.firstServer;
             st.currentSet = 1;
@@ -221,6 +239,39 @@ io.on("connection", (socket) => {
             st.timeoutActive = false;
             st.timeoutBy = "";
             recomputeServer(st);
+        }
+
+        else if (type === "SET_SCORE_STATE") {
+            const p = msg.payload || {};
+
+            if (p.players) {
+                st.players.A = (p.players.A || st.players.A || "Joueur A").toString().trim().slice(0, 24);
+                st.players.B = (p.players.B || st.players.B || "Joueur B").toString().trim().slice(0, 24);
+            }
+
+            st.bestOf = cleanBestOf(p.bestOf ?? st.bestOf);
+            st.currentSet = Math.max(1, Math.min(st.bestOf, cleanSet(p.currentSet || 1)));
+            st.sets = {
+                A: cleanSet(p.sets?.A),
+                B: cleanSet(p.sets?.B)
+            };
+            st.points = {
+                A: cleanPoint(p.points?.A),
+                B: cleanPoint(p.points?.B)
+            };
+            st.firstServer = p.firstServer === "B" ? "B" : "A";
+            st.timeoutUsed = {
+                A: Boolean(p.timeoutUsed?.A),
+                B: Boolean(p.timeoutUsed?.B)
+            };
+            st.timeoutActive = false;
+            st.timeoutBy = "";
+            st._swappedAtFive = Boolean(p.swappedAtFive);
+            recomputeServer(st);
+        }
+
+        else if (type === "SWAP_SIDES") {
+            swapSides(st);
         }
 
         else if (type === "POINT_A" || type === "POINT_B") {
