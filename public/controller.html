@@ -6,17 +6,68 @@
   <title>TT CONTROL PRO</title>
 
   <style>
+    :root{
+      --bg:#10141c;
+      --card:#1e2530;
+      --card2:#151b24;
+      --text:#ffffff;
+      --soft:rgba(255,255,255,.68);
+      --blue:#0070ff;
+      --red:#f80000;
+      --green:#2e7d32;
+      --purple:#7c3cff;
+      --orange:#ff9800;
+      --danger:#b00020;
+    }
+
+    *{box-sizing:border-box;}
+
     body{
       margin:0;
-      background:#11151c;
-      font-family:-apple-system,system-ui;
-      color:white;
+      background:var(--bg);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+      color:var(--text);
     }
 
     .wrapper{
-      max-width:650px;
+      max-width:720px;
       margin:auto;
-      padding:18px;
+      padding:16px;
+    }
+
+    .tableSwitch{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-bottom:12px;
+    }
+
+    .tableBtn{
+      border:2px solid transparent;
+      background:var(--card);
+      color:white;
+      border-radius:16px;
+      padding:14px 10px;
+      text-align:center;
+      font-weight:900;
+      font-size:18px;
+      cursor:pointer;
+    }
+
+    .tableBtn.active{
+      background:linear-gradient(135deg,#0007f8,var(--purple));
+      border-color:rgba(255,255,255,.28);
+    }
+
+    .status{
+      background:var(--card2);
+      border-radius:14px;
+      padding:10px 12px;
+      color:var(--soft);
+      font-size:13px;
+      font-weight:800;
+      margin-bottom:12px;
+      text-align:center;
     }
 
     .tabs{
@@ -28,10 +79,10 @@
     .tab{
       flex:1;
       padding:12px;
-      background:#1e2530;
+      background:var(--card);
       text-align:center;
       border-radius:12px;
-      font-weight:800;
+      font-weight:900;
       cursor:pointer;
     }
 
@@ -48,29 +99,43 @@
     }
 
     .card{
-      background:#1e2530;
-      padding:20px;
+      background:var(--card);
+      padding:18px;
       border-radius:18px;
       text-align:center;
       transition:.2s;
     }
 
-    .card.flash{
-      animation:flash .25s ease;
-    }
-
-    @keyframes flash{
-      50%{transform:scale(1.08);}
-    }
+    .card.flash{ animation:flash .25s ease; }
+    @keyframes flash{50%{transform:scale(1.08);}}
 
     .name{
-      font-weight:800;
+      font-weight:900;
       margin-bottom:8px;
+      min-height:22px;
+      text-transform:uppercase;
     }
 
     .points{
-      font-size:42px;
+      font-size:44px;
+      font-weight:950;
+      line-height:1;
+    }
+
+    .setsLine{
+      margin-top:8px;
+      color:var(--soft);
+      font-size:13px;
       font-weight:900;
+    }
+
+    .serverLine{
+      margin:10px 0 14px;
+      padding:10px;
+      border-radius:14px;
+      background:var(--card2);
+      font-weight:900;
+      text-align:center;
     }
 
     button{
@@ -80,38 +145,79 @@
       padding:16px;
       margin:6px 0;
       width:100%;
-      font-weight:900;
+      font-weight:950;
       cursor:pointer;
       transition:.2s;
-    }
-
-    button:active{transform:scale(.95);}
-
-    .startBtn{ background: #a5ae58; }
-    .btnA{ background: #f80000; }
-    .btnB{ background: #0070ff; }
-    .timeout{ background:#ff9800; }
-    .endTimeout{ background:#ffc107;color:#111; }
-    .small{ font-size:15px;padding:12px; }
-    .danger{ background:#b00020; }
-
-    input,select{
-      width:100%;
-      padding:10px;
-      margin:8px 0;
-      border-radius:10px;
-      border:none;
-      background:#1e2530;
       color:white;
     }
 
-    .badge{
-      background:#2e7d32;
-      font-size:12px;
-      padding:4px 8px;
-      border-radius:8px;
-      margin-left:6px;
+    button:active{transform:scale(.96);}
+    button:disabled{opacity:.45;cursor:not-allowed;}
+
+    .startBtn{ background:#a5ae58;color:#111; }
+    .btnA{ background:var(--red); }
+    .btnB{ background:var(--blue); }
+    .timeout{ background:var(--orange);color:#111; }
+    .endTimeout{ background:#ffc107;color:#111; }
+    .small{ font-size:15px;padding:12px;background:#313b4a; }
+    .danger{ background:var(--danger); }
+    .resume{ background:var(--green); }
+    .swap{ background:var(--purple); }
+
+    label{
+      display:block;
+      margin-top:12px;
+      margin-bottom:5px;
+      color:var(--soft);
+      font-weight:850;
+      font-size:13px;
+      text-transform:uppercase;
+      letter-spacing:.04em;
     }
+
+    input,select{
+      width:100%;
+      padding:13px;
+      margin:0 0 6px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.08);
+      background:var(--card);
+      color:white;
+      font-size:16px;
+    }
+
+    .formGrid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
+    .hint{
+      color:var(--soft);
+      font-size:13px;
+      line-height:1.35;
+      margin:8px 0 14px;
+    }
+
+    .radioGrid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-bottom:10px;
+    }
+
+    .radioBox{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:center;
+      background:var(--card);
+      border-radius:12px;
+      padding:13px;
+      font-weight:900;
+    }
+
+    .radioBox input{width:auto;margin:0;}
   </style>
 </head>
 
@@ -119,27 +225,38 @@
 
 <div class="wrapper">
 
+  <div class="tableSwitch">
+    <div class="tableBtn active" data-room="table1">TABLE 1</div>
+    <div class="tableBtn" data-room="table2">TABLE 2</div>
+  </div>
+
+  <div class="status" id="status">Télécommande connectée à TABLE 1</div>
+
   <div class="tabs">
     <div class="tab active" data-page="match">Match</div>
+    <div class="tab" data-page="prepare">Préparer / reprendre</div>
     <div class="tab" data-page="settings">Paramètres</div>
   </div>
 
-  <!-- MATCH -->
   <div id="match" class="page active">
 
     <div class="scoreGrid">
       <div class="card" id="cardA">
         <div class="name" id="nameA">JOUEUR A</div>
         <div class="points" id="scoreA">0</div>
+        <div class="setsLine">Sets : <span id="setsA">0</span></div>
       </div>
 
       <div class="card" id="cardB">
         <div class="name" id="nameB">JOUEUR B</div>
         <div class="points" id="scoreB">0</div>
+        <div class="setsLine">Sets : <span id="setsB">0</span></div>
       </div>
     </div>
 
-    <button class="startBtn" id="startBtn">Démarrer</button>
+    <div class="serverLine" id="serverLine">Service : -</div>
+
+    <button class="startBtn" id="startBtn">Démarrer à 0-0</button>
 
     <button class="btnA" id="btnA" disabled></button>
     <button class="btnB" id="btnB" disabled></button>
@@ -147,16 +264,65 @@
     <button class="timeout" id="toA">Temps mort A</button>
     <button class="timeout" id="toB">Temps mort B</button>
 
-    <button class="endTimeout" id="endTimeout" style="display:none;">
-      Fin du temps mort
-    </button>
+    <button class="endTimeout" id="endTimeout" style="display:none;">Fin du temps mort</button>
 
+    <button class="small swap" onclick="safeSend('SWAP_SIDES')">Inverser les côtés</button>
     <button class="small" onclick="safeSend('UNDO')">Annuler</button>
-    <button class="small danger" onclick="safeSend('RESET_MATCH')">Reset Match</button>
+    <button class="small danger" onclick="safeSend('RESET_MATCH')">Reset de cette table</button>
 
   </div>
 
-  <!-- SETTINGS -->
+  <div id="prepare" class="page">
+    <div class="hint">
+      Utilise cette page surtout pour la table 2 : tu peux entrer les noms, les sets et le score déjà en cours avant de basculer la caméra dessus.
+    </div>
+
+    <label>Nom joueur A</label>
+    <input id="resumeNameA" placeholder="Joueur A">
+
+    <label>Nom joueur B</label>
+    <input id="resumeNameB" placeholder="Joueur B">
+
+    <div class="formGrid">
+      <div>
+        <label>Sets A</label>
+        <select id="resumeSetsA"></select>
+      </div>
+      <div>
+        <label>Sets B</label>
+        <select id="resumeSetsB"></select>
+      </div>
+    </div>
+
+    <div class="formGrid">
+      <div>
+        <label>Score A</label>
+        <select id="resumePointsA"></select>
+      </div>
+      <div>
+        <label>Score B</label>
+        <select id="resumePointsB"></select>
+      </div>
+    </div>
+
+    <label>Format</label>
+    <select id="resumeBestOf">
+      <option value="5">BO5</option>
+      <option value="3">BO3</option>
+    </select>
+
+    <label>Set en cours</label>
+    <select id="resumeCurrentSet"></select>
+
+    <label>Qui a servi en premier dans ce set ?</label>
+    <div class="radioGrid">
+      <label class="radioBox"><input type="radio" name="resumeServe" value="A" checked> Joueur A</label>
+      <label class="radioBox"><input type="radio" name="resumeServe" value="B"> Joueur B</label>
+    </div>
+
+    <button class="resume" onclick="resumeScoreState()">Reprendre ce score</button>
+  </div>
+
   <div id="settings" class="page">
 
     <label>Mode</label>
@@ -165,16 +331,16 @@
       <option value="doubles">Double</option>
     </select>
 
-    <label>A1</label>
+    <label>Joueur A</label>
     <input id="A1">
 
-    <label>A2</label>
+    <label>A2 si double</label>
     <input id="A2">
 
-    <label>B1</label>
+    <label>Joueur B</label>
     <input id="B1">
 
-    <label>B2</label>
+    <label>B2 si double</label>
     <input id="B2">
 
     <label>Format</label>
@@ -183,7 +349,7 @@
       <option value="5">BO5</option>
     </select>
 
-    <button class="btnA" onclick="applySettings()">Appliquer</button>
+    <button class="btnA" onclick="applySettings()">Appliquer et repartir à 0-0</button>
 
   </div>
 
@@ -192,105 +358,99 @@
 <script src="/socket.io/socket.io.js"></script>
 
 <script>
+  const urlRoom = new URLSearchParams(location.search).get("room") || "table1";
+  const socket = io();
+  const el = id => document.getElementById(id);
 
-  const room =
-          new URLSearchParams(location.search).get("room") || "table1"
+  let currentRoom = urlRoom;
+  let lastState = null;
 
-  const socket = io()
+  function roomLabel(room){
+    return room === "table2" ? "TABLE 2" : "TABLE 1";
+  }
 
-  const el = id => document.getElementById(id)
+  function fillSelect(id, max, selected = 0){
+    const select = el(id);
+    select.innerHTML = "";
+    for(let i = 0; i <= max; i++){
+      const option = document.createElement("option");
+      option.value = String(i);
+      option.textContent = String(i);
+      if(i === selected) option.selected = true;
+      select.appendChild(option);
+    }
+  }
 
-  let lastState = null
-
-  /* =====================
-  NAVIGATION ONGLET
-  ===================== */
+  fillSelect("resumeSetsA", 4, 0);
+  fillSelect("resumeSetsB", 4, 0);
+  fillSelect("resumePointsA", 30, 0);
+  fillSelect("resumePointsB", 30, 0);
+  fillSelect("resumeCurrentSet", 5, 1);
 
   document.querySelectorAll(".tab").forEach(tab=>{
     tab.addEventListener("click",()=>{
+      const page = tab.dataset.page;
+      document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+      el(page).classList.add("active");
+      tab.classList.add("active");
+    });
+  });
 
-      const page = tab.dataset.page
-
-      document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"))
-      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"))
-
-      document.getElementById(page).classList.add("active")
-      tab.classList.add("active")
-
-    })
-  })
-
-  /* =====================
-  UTIL
-  ===================== */
+  document.querySelectorAll(".tableBtn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      currentRoom = btn.dataset.room || "table1";
+      document.querySelectorAll(".tableBtn").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      el("status").textContent = "Télécommande connectée à " + roomLabel(currentRoom);
+      lastState = null;
+      socket.emit("join", currentRoom);
+    });
+  });
 
   function safeSend(type,data={}){
-
     socket.emit("action",{
-      room,
+      room: currentRoom,
       type,
       ...data
-    })
-
+    });
   }
 
   function flash(team){
-
-    const card = team==="A" ? el("cardA") : el("cardB")
-
-    card.classList.add("flash")
-
-    setTimeout(()=>card.classList.remove("flash"),250)
-
+    const card = team === "A" ? el("cardA") : el("cardB");
+    card.classList.add("flash");
+    setTimeout(()=>card.classList.remove("flash"),250);
   }
 
   function teamName(st,team){
-
-    if(team==="A"){
-      return st.players.A
-    }else{
-      return st.players.B
-    }
-
+    return team === "A" ? st.players.A : st.players.B;
   }
 
-  /* =====================
-  START MATCH
-  ===================== */
+  function selectedServe(){
+    const checked = document.querySelector('input[name="resumeServe"]:checked');
+    return checked ? checked.value : "A";
+  }
 
   el("startBtn").onclick = ()=>{
-
     if(!lastState){
-      alert("Connexion en cours avec le serveur...")
-      return
+      alert("Connexion en cours avec le serveur...");
+      return;
     }
 
-    const nameA = teamName(lastState,"A")
-    const nameB = teamName(lastState,"B")
+    const nameA = teamName(lastState,"A");
+    const nameB = teamName(lastState,"B");
 
     const choice = prompt(
-            "Qui sert en premier ?\n\n1 = "+nameA+
-            "\n2 = "+nameB
-    )
+      "Qui sert en premier ?\n\n1 = "+nameA+
+      "\n2 = "+nameB
+    );
 
-    if(choice==="1"){
-      safeSend("SET_SERVE",{serve:"A"})
-    }
-
-    if(choice==="2"){
-      safeSend("SET_SERVE",{serve:"B"})
-    }
-
-  }
-
-  /* =====================
-  SETTINGS
-  ===================== */
+    if(choice === "1") safeSend("SET_SERVE",{serve:"A"});
+    if(choice === "2") safeSend("SET_SERVE",{serve:"B"});
+  };
 
   function applySettings(){
-
     safeSend("APPLY_SETTINGS",{
-
       payload:{
         players:{
           A:el("A1").value || "JOUEUR A",
@@ -299,70 +459,96 @@
         bestOf:parseInt(el("bestOf").value) || 5,
         firstServer:"A"
       }
-
-    })
-
+    });
   }
 
-  /* =====================
-  SOCKET
-  ===================== */
+  function resumeScoreState(){
+    const pointsA = parseInt(el("resumePointsA").value) || 0;
+    const pointsB = parseInt(el("resumePointsB").value) || 0;
+    const setsA = parseInt(el("resumeSetsA").value) || 0;
+    const setsB = parseInt(el("resumeSetsB").value) || 0;
+    const bestOf = parseInt(el("resumeBestOf").value) || 5;
+    const currentSet = parseInt(el("resumeCurrentSet").value) || (setsA + setsB + 1);
+
+    safeSend("SET_SCORE_STATE",{
+      payload:{
+        players:{
+          A:el("resumeNameA").value || "JOUEUR A",
+          B:el("resumeNameB").value || "JOUEUR B"
+        },
+        sets:{A:setsA,B:setsB},
+        points:{A:pointsA,B:pointsB},
+        bestOf,
+        currentSet,
+        firstServer:selectedServe()
+      }
+    });
+  }
 
   socket.on("connect",()=>{
-
-    socket.emit("join",room)
-
-  })
+    socket.emit("join",currentRoom);
+  });
 
   socket.on("state",(st)=>{
+    if(st.room && st.room !== currentRoom) return;
 
-    lastState = st
+    lastState = st;
 
-    const nameA = teamName(st,"A")
-    const nameB = teamName(st,"B")
+    const nameA = teamName(st,"A");
+    const nameB = teamName(st,"B");
 
-    el("nameA").textContent = nameA
-    el("nameB").textContent = nameB
+    el("nameA").textContent = nameA;
+    el("nameB").textContent = nameB;
 
-    el("scoreA").textContent = st.points.A
-    el("scoreB").textContent = st.points.B
+    el("scoreA").textContent = st.points.A;
+    el("scoreB").textContent = st.points.B;
+    el("setsA").textContent = st.sets.A;
+    el("setsB").textContent = st.sets.B;
 
-    el("btnA").textContent = "+1 "+nameA
-    el("btnB").textContent = "+1 "+nameB
+    el("serverLine").textContent = "Service : " + (st.server === "B" ? nameB : nameA);
 
-    el("btnA").disabled = st.timeoutActive
-    el("btnB").disabled = st.timeoutActive
+    el("btnA").textContent = "+1 " + nameA;
+    el("btnB").textContent = "+1 " + nameB;
+
+    el("btnA").disabled = st.timeoutActive;
+    el("btnB").disabled = st.timeoutActive;
 
     el("btnA").onclick = ()=>{
-      safeSend("POINT_A")
-      flash("A")
-    }
+      safeSend("POINT_A");
+      flash("A");
+    };
 
     el("btnB").onclick = ()=>{
-      safeSend("POINT_B")
-      flash("B")
-    }
+      safeSend("POINT_B");
+      flash("B");
+    };
 
-    el("toA").onclick = ()=>safeSend("TIMEOUT_START",{by:"A"})
-    el("toB").onclick = ()=>safeSend("TIMEOUT_START",{by:"B"})
-    el("endTimeout").onclick = ()=>safeSend("TIMEOUT_END")
+    el("toA").onclick = ()=>safeSend("TIMEOUT_START",{by:"A"});
+    el("toB").onclick = ()=>safeSend("TIMEOUT_START",{by:"B"});
+    el("endTimeout").onclick = ()=>safeSend("TIMEOUT_END");
 
-    el("toA").disabled = st.timeoutUsed.A
-    el("toB").disabled = st.timeoutUsed.B
+    el("toA").disabled = st.timeoutUsed.A;
+    el("toB").disabled = st.timeoutUsed.B;
 
-    el("endTimeout").style.display =
-            st.timeoutActive ? "block":"none"
+    el("endTimeout").style.display = st.timeoutActive ? "block" : "none";
 
     el("startBtn").style.display =
-            (st.points.A===0 && st.points.B===0 && st.sets.A===0 && st.sets.B===0)
-                    ? "block":"none"
+      (st.points.A === 0 && st.points.B === 0 && st.sets.A === 0 && st.sets.B === 0)
+        ? "block" : "none";
 
-    el("A1").value = st.players.A
-    el("B1").value = st.players.B
-    el("bestOf").value = st.bestOf
+    el("A1").value = st.players.A;
+    el("B1").value = st.players.B;
+    el("bestOf").value = st.bestOf;
 
-  })
-
+    el("resumeNameA").value = st.players.A;
+    el("resumeNameB").value = st.players.B;
+    el("resumeBestOf").value = st.bestOf;
+    el("resumeSetsA").value = st.sets.A;
+    el("resumeSetsB").value = st.sets.B;
+    el("resumePointsA").value = st.points.A;
+    el("resumePointsB").value = st.points.B;
+    el("resumeCurrentSet").value = st.currentSet || 1;
+  });
 </script>
 
 </body>
